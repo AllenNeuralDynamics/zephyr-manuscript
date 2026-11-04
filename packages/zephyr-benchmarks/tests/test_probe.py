@@ -9,8 +9,8 @@ from pathlib import Path
 import numpy as np
 import torch
 
-# The tiny real dataset zephyr's own tests decode, train and predict on.
-sys.path.insert(0, str(Path(__file__).parents[2] / "zephyr" / "tests"))
+# The tiny real dataset zephyr's own tests decode, train and predict on (a copy).
+sys.path.insert(0, str(Path(__file__).parent))
 from _synthetic import HAS_FFMPEG, make_dataset
 
 from zephyr.benchmarks.probe import Noisy, load_probes, main, probe_traces

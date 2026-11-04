@@ -23,7 +23,7 @@ gpu = ["zephyr[gpu]"]
 zephyr-benchmarks = "zephyr.benchmarks.cli:run"
 
 [tool.uv.sources]
-zephyr = { workspace = true }
+# zephyr is pinned in the workspace root's pyproject.toml.
 
 [build-system]
 requires = ["hatchling", "hatch-vcs"]

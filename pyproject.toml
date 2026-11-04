@@ -1,0 +1,70 @@
+# uv workspace root of the paper (virtual: it is not a package itself).
+#   packages/zephyr-benchmarks  -- benchmarks on our dataset and the comparison methods
+#   packages/zephyr-dataset     -- builds the corpus of VR-foraging sessions (Allen-internal)
+#   notebooks/                  -- the figures, tables and values of the manuscript
+#   manuscript/                 -- the paper (Typst)
+#
+# zephyr comes from the zephyr repository, pinned to one commit.
+#   uv sync --all-packages --extra cpu   # or --extra gpu
+
+[tool.uv.workspace]
+members = ["packages/*"]
+
+[tool.uv.sources]
+zephyr-benchmarks = { workspace = true }
+zephyr-dataset = { workspace = true }
+zephyr = { git = "https://github.com/AllenNeuralDynamics/zephyr", rev = "b25af8a4887a4908236d56c35ada5da807a9b125", subdirectory = "packages/zephyr" }
+
+[dependency-groups]
+dev = ["ruff>=0.14", "pytest>=8.0", "marimo>=0.14"]
+
+[tool.uv]
+conflicts = [
+    [
+        { package = "zephyr", extra = "cpu" },
+        { package = "zephyr", extra = "gpu" },
+    ],
+    [
+        { package = "zephyr-benchmarks", extra = "cpu" },
+        { package = "zephyr-benchmarks", extra = "gpu" },
+    ],
+]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cu126"
+url = "https://download.pytorch.org/whl/cu126"
+explicit = true
+
+[tool.ruff]
+target-version = "py311"
+line-length = 88
+src = [
+    "packages/zephyr-benchmarks/src",
+    "packages/zephyr-dataset/src",
+    "notebooks",
+]
+
+[tool.ruff.lint]
+extend-select = ["I"]
+
+[tool.ruff.lint.isort]
+# zephyr is installed from git, but sorts with this repository's code, as in zephyr.
+known-first-party = ["zephyr", "utils"]
+
+[tool.ruff.lint.per-file-ignores]
+"notebooks/*.py" = ["B018", "PLR1711"]  # marimo cells end in the value they show
+
+[tool.pytest.ini_options]
+testpaths = [
+    "packages/zephyr-benchmarks/tests",
+    "packages/zephyr-dataset/tests",
+    "notebooks/tests",
+]
+# Both packages have test modules of the same name; importlib mode keeps them apart.
+addopts = ["--import-mode=importlib"]
+pythonpath = ["packages/zephyr-dataset/tests", "notebooks"]

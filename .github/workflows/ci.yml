@@ -1,0 +1,75 @@
+name: Manuscript CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  manuscript:
+    runs-on: ubuntu-latest
+    name: Build manuscript PDF
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - uses: typst-community/setup-typst@v5.3.0
+        with:
+          typst-version: "0.15.0"
+
+      - name: Compile manuscript
+        run: >-
+          typst compile --font-path manuscript/template/fonts
+          --input version="$(git describe --always --dirty --abbrev=40 --exclude='*')"
+          manuscript/main.typ "${{ runner.temp }}/manuscript.pdf"
+
+      - name: Upload manuscript as artifact
+        uses: actions/upload-artifact@v7
+        with:
+          path: ${{ runner.temp }}/manuscript.pdf
+          archive: false
+          if-no-files-found: error
+          retention-days: 30
+
+  tests:
+    runs-on: ubuntu-latest
+    name: Benchmark and notebook tests (py${{ matrix.python-version }})
+    env:
+      # `uv run` would otherwise re-sync without --extra cpu and uninstall torch.
+      UV_NO_SYNC: "1"
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v8.2.0
+        with:
+          enable-cache: true
+
+      - name: Install ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
+      - name: Install python dependencies
+        run: uv sync --python ${{ matrix.python-version }} --all-packages --extra cpu
+
+      - name: Run ruff format
+        run: uv run ruff format --check
+
+      - name: Run ruff check
+        run: uv run ruff check
+
+      - name: Run python unit tests
+        run: uv run pytest
+
+      - name: Check for uncommitted changes
+        shell: bash
+        run: |
+          git config --global core.safecrlf false
+          git diff --exit-code || (echo "Untracked changes found" && exit 1)
