@@ -1,0 +1,85 @@
+# The sessions without a thermistor (Fig. 5, Fig. S10): the all-camera network of cv_0
+# (all-cameras, finished) predicts every camera of each session with quality control, its
+# reference the one training wrote (--task predict, predict_capsule.py). One computation
+# per session, side by side, into zephyr-runs/application/<session>_<camera>/; a camera
+# already uploaded is skipped. The sessions' raw data assets are attached to the capsule,
+# each under its name (clips/clips-application.toml names /data/<session>/...).
+#   uv run launch.py <this folder>/predict-application.toml [--smoke] [--submit]
+experiment = "manuscript/experiments/all-cameras.toml"
+seeds = [17]
+
+[[run]]
+name = "application-788731_2025-12-09_19-10-07"
+args = ["--task=predict", "--checkpoint=all-cameras/cv_0/seed-17", "--clips=manuscript/clips/clips-application.toml", "--name=application", "--groups=788731_2025-12-09_19-10-07_FaceCamera,788731_2025-12-09_19-10-07_SideCamera,788731_2025-12-09_19-10-07_FrontCamera"]
+
+[[run]]
+name = "application-804430_2025-11-10_23-35-39"
+args = ["--task=predict", "--checkpoint=all-cameras/cv_0/seed-17", "--clips=manuscript/clips/clips-application.toml", "--name=application", "--groups=804430_2025-11-10_23-35-39_FaceCamera,804430_2025-11-10_23-35-39_SideCamera,804430_2025-11-10_23-35-39_FrontCamera"]
+
+[[run]]
+name = "application-804434_2025-11-08_00-34-23"
+args = ["--task=predict", "--checkpoint=all-cameras/cv_0/seed-17", "--clips=manuscript/clips/clips-application.toml", "--name=application", "--groups=804434_2025-11-08_00-34-23_FaceCamera,804434_2025-11-08_00-34-23_SideCamera,804434_2025-11-08_00-34-23_FrontCamera"]
+
+[[run]]
+name = "application-808054_2026-04-06_19-11-16"
+args = ["--task=predict", "--checkpoint=all-cameras/cv_0/seed-17", "--clips=manuscript/clips/clips-application.toml", "--name=application", "--groups=808054_2026-04-06_19-11-16_FaceCamera,808054_2026-04-06_19-11-16_SideCamera,808054_2026-04-06_19-11-16_FrontCamera"]
+
+[[run]]
+name = "application-810351_2025-12-11_00-52-19"
+args = ["--task=predict", "--checkpoint=all-cameras/cv_0/seed-17", "--clips=manuscript/clips/clips-application.toml", "--name=application", "--groups=810351_2025-12-11_00-52-19_FaceCamera,810351_2025-12-11_00-52-19_SideCamera,810351_2025-12-11_00-52-19_FrontCamera"]
+
+[[run]]
+name = "application-816214_2026-04-07_16-57-05"
+args = ["--task=predict", "--checkpoint=all-cameras/cv_0/seed-17", "--clips=manuscript/clips/clips-application.toml", "--name=application", "--groups=816214_2026-04-07_16-57-05_FaceCamera,816214_2026-04-07_16-57-05_SideCamera,816214_2026-04-07_16-57-05_FrontCamera"]
+
+[[run]]
+name = "application-822683_2026-02-19_16-49-20"
+args = ["--task=predict", "--checkpoint=all-cameras/cv_0/seed-17", "--clips=manuscript/clips/clips-application.toml", "--name=application", "--groups=822683_2026-02-19_16-49-20_FaceCamera,822683_2026-02-19_16-49-20_SideCamera,822683_2026-02-19_16-49-20_FrontCamera"]
+
+[[run]]
+name = "application-860898_2026-07-24_20-26-29"
+args = ["--task=predict", "--checkpoint=all-cameras/cv_0/seed-17", "--clips=manuscript/clips/clips-application.toml", "--name=application", "--groups=860898_2026-07-24_20-26-29_FaceCamera,860898_2026-07-24_20-26-29_SideCamera,860898_2026-07-24_20-26-29_FrontCamera"]
+
+[[run]]
+name = "application-860900_2026-07-22_17-30-19"
+args = ["--task=predict", "--checkpoint=all-cameras/cv_0/seed-17", "--clips=manuscript/clips/clips-application.toml", "--name=application", "--groups=860900_2026-07-22_17-30-19_FaceCamera,860900_2026-07-22_17-30-19_SideCamera,860900_2026-07-22_17-30-19_FrontCamera"]
+
+[[run]]
+name = "application-860903_2026-06-18_17-13-50"
+args = ["--task=predict", "--checkpoint=all-cameras/cv_0/seed-17", "--clips=manuscript/clips/clips-application.toml", "--name=application", "--groups=860903_2026-06-18_17-13-50_FaceCamera,860903_2026-06-18_17-13-50_SideCamera,860903_2026-06-18_17-13-50_FrontCamera"]
+
+[[run]]
+name = "application-867422_2026-09-03_15-37-37"
+args = ["--task=predict", "--checkpoint=all-cameras/cv_0/seed-17", "--clips=manuscript/clips/clips-application.toml", "--name=application", "--groups=867422_2026-09-03_15-37-37_FaceCamera,867422_2026-09-03_15-37-37_SideCamera,867422_2026-09-03_15-37-37_FrontCamera"]
+
+[[run]]
+name = "application-867423_2026-08-25_16-34-22"
+args = ["--task=predict", "--checkpoint=all-cameras/cv_0/seed-17", "--clips=manuscript/clips/clips-application.toml", "--name=application", "--groups=867423_2026-08-25_16-34-22_FaceCamera,867423_2026-08-25_16-34-22_SideCamera,867423_2026-08-25_16-34-22_FrontCamera"]
+
+[[run]]
+name = "application-867424_2026-08-21_20-02-17"
+args = ["--task=predict", "--checkpoint=all-cameras/cv_0/seed-17", "--clips=manuscript/clips/clips-application.toml", "--name=application", "--groups=867424_2026-08-21_20-02-17_FaceCamera,867424_2026-08-21_20-02-17_SideCamera,867424_2026-08-21_20-02-17_FrontCamera"]
+
+[[run]]
+name = "application-867425_2026-10-21_19-17-00"
+args = ["--task=predict", "--checkpoint=all-cameras/cv_0/seed-17", "--clips=manuscript/clips/clips-application.toml", "--name=application", "--groups=867425_2026-10-21_19-17-00_FaceCamera,867425_2026-10-21_19-17-00_SideCamera,867425_2026-10-21_19-17-00_FrontCamera"]
+
+[[run]]
+name = "application-867426_2026-10-26_20-09-01"
+args = ["--task=predict", "--checkpoint=all-cameras/cv_0/seed-17", "--clips=manuscript/clips/clips-application.toml", "--name=application", "--groups=867426_2026-10-26_20-09-01_FaceCamera,867426_2026-10-26_20-09-01_SideCamera,867426_2026-10-26_20-09-01_FrontCamera"]
+
+[[run]]
+name = "application-867427_2026-08-17_16-33-41"
+args = ["--task=predict", "--checkpoint=all-cameras/cv_0/seed-17", "--clips=manuscript/clips/clips-application.toml", "--name=application", "--groups=867427_2026-08-17_16-33-41_FaceCamera,867427_2026-08-17_16-33-41_SideCamera,867427_2026-08-17_16-33-41_FrontCamera"]
+
+[[run]]
+name = "application-867428_2026-10-26_20-09-12"
+args = ["--task=predict", "--checkpoint=all-cameras/cv_0/seed-17", "--clips=manuscript/clips/clips-application.toml", "--name=application", "--groups=867428_2026-10-26_20-09-12_FaceCamera,867428_2026-10-26_20-09-12_SideCamera,867428_2026-10-26_20-09-12_FrontCamera"]
+
+[[run]]
+name = "application-878045_2026-10-26_20-09-07"
+args = ["--task=predict", "--checkpoint=all-cameras/cv_0/seed-17", "--clips=manuscript/clips/clips-application.toml", "--name=application", "--groups=878045_2026-10-26_20-09-07_FaceCamera,878045_2026-10-26_20-09-07_SideCamera,878045_2026-10-26_20-09-07_FrontCamera"]
+
+[[run]]
+name = "application-878046_2026-10-26_20-11-15"
+args = ["--task=predict", "--checkpoint=all-cameras/cv_0/seed-17", "--clips=manuscript/clips/clips-application.toml", "--name=application", "--groups=878046_2026-10-26_20-11-15_FaceCamera,878046_2026-10-26_20-11-15_SideCamera,878046_2026-10-26_20-11-15_FrontCamera"]

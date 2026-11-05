@@ -1,0 +1,451 @@
+# The VR-foraging sessions without a thermistor (Fig. 5, Fig. S10): every camera of 19
+# sessions, each video the raw session's on aind-open-data, mounted at /data/<session>
+# (the capsule attaches each session's data asset under its name). Boxes, frames and
+# frame rates are the ones placed and checked for the paper (the app's Boxes page);
+# each clip's group is <session>_<camera>, so each predicts into its own folder.
+[preprocess]
+target_size = [360, 270]
+select_fs = 60.0
+onset_sigma_s = 0.02
+output_fs = 60.0
+
+[[clip]]
+video = "/data/867425_2026-10-21_19-17-00/behavior-videos/FaceCamera/video.mp4"
+group = "867425_2026-10-21_19-17-00_FaceCamera"
+frame_rate = 120.1923
+thermistor = false
+frame = [328, 246]
+box = [169, 122, 96, 96]
+
+[[clip]]
+video = "/data/867426_2026-10-26_20-09-01/behavior-videos/FaceCamera/video.mp4"
+group = "867426_2026-10-26_20-09-01_FaceCamera"
+frame_rate = 120.1923
+thermistor = false
+frame = [342, 257]
+box = [202, 117, 96, 96]
+
+[[clip]]
+video = "/data/867428_2026-10-26_20-09-12/behavior-videos/FaceCamera/video.mp4"
+group = "867428_2026-10-26_20-09-12_FaceCamera"
+frame_rate = 120.1923
+thermistor = false
+box = [196, 122, 96, 96]
+
+[[clip]]
+video = "/data/878045_2026-10-26_20-09-07/behavior-videos/FaceCamera/video.mp4"
+group = "878045_2026-10-26_20-09-07_FaceCamera"
+frame_rate = 120.1923
+thermistor = false
+frame = [313, 235]
+box = [194, 88, 96, 96]
+
+[[clip]]
+video = "/data/878046_2026-10-26_20-11-15/behavior-videos/FaceCamera/video.mp4"
+group = "878046_2026-10-26_20-11-15_FaceCamera"
+frame_rate = 120.1923
+thermistor = false
+frame = [328, 246]
+box = [210, 117, 96, 96]
+
+[[clip]]
+video = "/data/867424_2026-08-21_20-02-17/behavior-videos/FaceCamera/video.mp4"
+group = "867424_2026-08-21_20-02-17_FaceCamera"
+frame_rate = 240.3846
+thermistor = false
+box = [258, 119, 96, 96]
+
+[[clip]]
+video = "/data/867422_2026-09-03_15-37-37/behavior-videos/FaceCamera/video.mp4"
+group = "867422_2026-09-03_15-37-37_FaceCamera"
+frame_rate = 240.3846
+thermistor = false
+box = [200, 99, 96, 96]
+
+[[clip]]
+video = "/data/860900_2026-07-22_17-30-19/behavior-videos/FaceCamera/video.mp4"
+group = "860900_2026-07-22_17-30-19_FaceCamera"
+frame_rate = 240.3846
+thermistor = false
+box = [209, 150, 96, 96]
+
+[[clip]]
+video = "/data/860898_2026-07-24_20-26-29/behavior-videos/FaceCamera/video.mp4"
+group = "860898_2026-07-24_20-26-29_FaceCamera"
+frame_rate = 240.3846
+thermistor = false
+box = [245, 127, 96, 96]
+
+[[clip]]
+video = "/data/867423_2026-08-25_16-34-22/behavior-videos/FaceCamera/video.mp4"
+group = "867423_2026-08-25_16-34-22_FaceCamera"
+frame_rate = 240.3846
+thermistor = false
+box = [223, 111, 96, 96]
+
+[[clip]]
+video = "/data/867427_2026-08-17_16-33-41/behavior-videos/FaceCamera/video.mp4"
+group = "867427_2026-08-17_16-33-41_FaceCamera"
+frame_rate = 240.3846
+thermistor = false
+box = [198, 131, 96, 96]
+
+[[clip]]
+video = "/data/860903_2026-06-18_17-13-50/behavior-videos/FaceCamera/video.mp4"
+group = "860903_2026-06-18_17-13-50_FaceCamera"
+frame_rate = 240.3846
+thermistor = false
+box = [202, 113, 96, 96]
+
+[[clip]]
+video = "/data/816214_2026-04-07_16-57-05/behavior-videos/FaceCamera/video.mp4"
+group = "816214_2026-04-07_16-57-05_FaceCamera"
+frame_rate = 240.3846
+thermistor = false
+box = [247, 113, 96, 96]
+
+[[clip]]
+video = "/data/804434_2025-11-08_00-34-23/behavior-videos/FaceCamera/video.mp4"
+group = "804434_2025-11-08_00-34-23_FaceCamera"
+frame_rate = 240.3846
+thermistor = false
+box = [257, 122, 96, 96]
+
+[[clip]]
+video = "/data/808054_2026-04-06_19-11-16/behavior-videos/FaceCamera/video.mp4"
+group = "808054_2026-04-06_19-11-16_FaceCamera"
+frame_rate = 240.3846
+thermistor = false
+box = [228, 123, 96, 96]
+
+[[clip]]
+video = "/data/804430_2025-11-10_23-35-39/behavior-videos/FaceCamera/video.mp4"
+group = "804430_2025-11-10_23-35-39_FaceCamera"
+frame_rate = 240.3846
+thermistor = false
+box = [258, 123, 96, 96]
+
+[[clip]]
+video = "/data/822683_2026-02-19_16-49-20/behavior-videos/FaceCamera/video.mp4"
+group = "822683_2026-02-19_16-49-20_FaceCamera"
+frame_rate = 240.3846
+thermistor = false
+box = [207, 114, 96, 96]
+
+[[clip]]
+video = "/data/788731_2025-12-09_19-10-07/behavior-videos/FaceCamera/video.mp4"
+group = "788731_2025-12-09_19-10-07_FaceCamera"
+frame_rate = 240.3846
+thermistor = false
+box = [239, 122, 96, 96]
+
+[[clip]]
+video = "/data/810351_2025-12-11_00-52-19/behavior-videos/FaceCamera/video.mp4"
+group = "810351_2025-12-11_00-52-19_FaceCamera"
+frame_rate = 240.3846
+thermistor = false
+box = [242, 139, 96, 96]
+
+[[clip]]
+video = "/data/867424_2026-08-21_20-02-17/behavior-videos/SideCamera/video.mp4"
+group = "867424_2026-08-21_20-02-17_SideCamera"
+frame_rate = 240.3846
+thermistor = false
+frame = [720, 540]
+box = [58, 256, 96, 96]
+
+[[clip]]
+video = "/data/867422_2026-09-03_15-37-37/behavior-videos/SideCamera/video.mp4"
+group = "867422_2026-09-03_15-37-37_SideCamera"
+frame_rate = 240.3846
+thermistor = false
+frame = [720, 540]
+box = [82, 246, 96, 96]
+
+[[clip]]
+video = "/data/860900_2026-07-22_17-30-19/behavior-videos/SideCamera/video.mp4"
+group = "860900_2026-07-22_17-30-19_SideCamera"
+frame_rate = 240.3846
+thermistor = false
+frame = [720, 540]
+box = [128, 256, 96, 96]
+
+[[clip]]
+video = "/data/860898_2026-07-24_20-26-29/behavior-videos/SideCamera/video.mp4"
+group = "860898_2026-07-24_20-26-29_SideCamera"
+frame_rate = 240.3846
+thermistor = false
+frame = [720, 540]
+box = [40, 240, 96, 96]
+
+[[clip]]
+video = "/data/867423_2026-08-25_16-34-22/behavior-videos/SideCamera/video.mp4"
+group = "867423_2026-08-25_16-34-22_SideCamera"
+frame_rate = 240.3846
+thermistor = false
+frame = [720, 540]
+box = [38, 251, 96, 96]
+
+[[clip]]
+video = "/data/867427_2026-08-17_16-33-41/behavior-videos/SideCamera/video.mp4"
+group = "867427_2026-08-17_16-33-41_SideCamera"
+frame_rate = 240.3846
+thermistor = false
+frame = [720, 540]
+box = [69, 261, 96, 96]
+
+[[clip]]
+video = "/data/860903_2026-06-18_17-13-50/behavior-videos/SideCamera/video.mp4"
+group = "860903_2026-06-18_17-13-50_SideCamera"
+frame_rate = 240.3846
+thermistor = false
+frame = [720, 540]
+box = [114, 252, 96, 96]
+
+[[clip]]
+video = "/data/816214_2026-04-07_16-57-05/behavior-videos/SideCamera/video.mp4"
+group = "816214_2026-04-07_16-57-05_SideCamera"
+frame_rate = 240.3846
+thermistor = false
+frame = [720, 540]
+box = [68, 250, 96, 96]
+
+[[clip]]
+video = "/data/804434_2025-11-08_00-34-23/behavior-videos/SideCamera/video.mp4"
+group = "804434_2025-11-08_00-34-23_SideCamera"
+frame_rate = 240.3846
+thermistor = false
+frame = [720, 540]
+box = [56, 260, 96, 96]
+
+[[clip]]
+video = "/data/808054_2026-04-06_19-11-16/behavior-videos/SideCamera/video.mp4"
+group = "808054_2026-04-06_19-11-16_SideCamera"
+frame_rate = 240.3846
+thermistor = false
+frame = [720, 540]
+box = [64, 256, 96, 96]
+
+[[clip]]
+video = "/data/804430_2025-11-10_23-35-39/behavior-videos/SideCamera/video.mp4"
+group = "804430_2025-11-10_23-35-39_SideCamera"
+frame_rate = 240.3846
+thermistor = false
+frame = [720, 540]
+box = [48, 258, 96, 96]
+
+[[clip]]
+video = "/data/822683_2026-02-19_16-49-20/behavior-videos/SideCamera/video.mp4"
+group = "822683_2026-02-19_16-49-20_SideCamera"
+frame_rate = 240.3846
+thermistor = false
+frame = [720, 540]
+box = [90, 246, 96, 96]
+
+[[clip]]
+video = "/data/788731_2025-12-09_19-10-07/behavior-videos/SideCamera/video.mp4"
+group = "788731_2025-12-09_19-10-07_SideCamera"
+frame_rate = 240.3846
+thermistor = false
+frame = [720, 540]
+box = [58, 254, 96, 96]
+
+[[clip]]
+video = "/data/810351_2025-12-11_00-52-19/behavior-videos/SideCamera/video.mp4"
+group = "810351_2025-12-11_00-52-19_SideCamera"
+frame_rate = 240.3846
+thermistor = false
+frame = [720, 540]
+box = [40, 262, 96, 96]
+
+[[clip]]
+video = "/data/867425_2026-10-21_19-17-00/behavior-videos/SideCamera/video.mp4"
+group = "867425_2026-10-21_19-17-00_SideCamera"
+frame_rate = 120.1923
+thermistor = false
+frame = [720, 540]
+box = [72, 264, 96, 96]
+
+[[clip]]
+video = "/data/867426_2026-10-26_20-09-01/behavior-videos/SideCamera/video.mp4"
+group = "867426_2026-10-26_20-09-01_SideCamera"
+frame_rate = 120.1923
+thermistor = false
+frame = [720, 540]
+box = [58, 258, 96, 96]
+
+[[clip]]
+video = "/data/867428_2026-10-26_20-09-12/behavior-videos/SideCamera/video.mp4"
+group = "867428_2026-10-26_20-09-12_SideCamera"
+frame_rate = 120.1923
+thermistor = false
+frame = [720, 540]
+box = [33, 259, 96, 96]
+
+[[clip]]
+video = "/data/878045_2026-10-26_20-09-07/behavior-videos/SideCamera/video.mp4"
+group = "878045_2026-10-26_20-09-07_SideCamera"
+frame_rate = 120.1923
+thermistor = false
+frame = [720, 540]
+box = [58, 260, 96, 96]
+
+[[clip]]
+video = "/data/878046_2026-10-26_20-11-15/behavior-videos/SideCamera/video.mp4"
+group = "878046_2026-10-26_20-11-15_SideCamera"
+frame_rate = 120.1923
+thermistor = false
+frame = [720, 540]
+box = [68, 254, 96, 96]
+
+[[clip]]
+video = "/data/867424_2026-08-21_20-02-17/behavior-videos/FrontCamera/video.mp4"
+group = "867424_2026-08-21_20-02-17_FrontCamera"
+frame_rate = 240.3846
+thermistor = false
+frame = [720, 540]
+box = [308, 298, 96, 96]
+
+[[clip]]
+video = "/data/867422_2026-09-03_15-37-37/behavior-videos/FrontCamera/video.mp4"
+group = "867422_2026-09-03_15-37-37_FrontCamera"
+frame_rate = 240.3846
+thermistor = false
+frame = [720, 540]
+box = [323, 290, 96, 96]
+
+[[clip]]
+video = "/data/860900_2026-07-22_17-30-19/behavior-videos/FrontCamera/video.mp4"
+group = "860900_2026-07-22_17-30-19_FrontCamera"
+frame_rate = 240.3846
+thermistor = false
+frame = [720, 540]
+box = [358, 327, 96, 96]
+
+[[clip]]
+video = "/data/860898_2026-07-24_20-26-29/behavior-videos/FrontCamera/video.mp4"
+group = "860898_2026-07-24_20-26-29_FrontCamera"
+frame_rate = 240.3846
+thermistor = false
+frame = [720, 540]
+box = [379, 307, 96, 96]
+
+[[clip]]
+video = "/data/867423_2026-08-25_16-34-22/behavior-videos/FrontCamera/video.mp4"
+group = "867423_2026-08-25_16-34-22_FrontCamera"
+frame_rate = 240.3846
+thermistor = false
+frame = [720, 540]
+box = [321, 291, 96, 96]
+
+[[clip]]
+video = "/data/867427_2026-08-17_16-33-41/behavior-videos/FrontCamera/video.mp4"
+group = "867427_2026-08-17_16-33-41_FrontCamera"
+frame_rate = 240.3846
+thermistor = false
+frame = [720, 540]
+box = [128, 258, 96, 96]
+
+[[clip]]
+video = "/data/860903_2026-06-18_17-13-50/behavior-videos/FrontCamera/video.mp4"
+group = "860903_2026-06-18_17-13-50_FrontCamera"
+frame_rate = 240.3846
+thermistor = false
+frame = [720, 540]
+box = [330, 242, 96, 96]
+
+[[clip]]
+video = "/data/816214_2026-04-07_16-57-05/behavior-videos/FrontCamera/video.mp4"
+group = "816214_2026-04-07_16-57-05_FrontCamera"
+frame_rate = 240.3846
+thermistor = false
+frame = [720, 540]
+box = [298, 288, 96, 96]
+
+[[clip]]
+video = "/data/804434_2025-11-08_00-34-23/behavior-videos/FrontCamera/video.mp4"
+group = "804434_2025-11-08_00-34-23_FrontCamera"
+frame_rate = 240.3846
+thermistor = false
+frame = [720, 540]
+box = [292, 304, 96, 96]
+
+[[clip]]
+video = "/data/808054_2026-04-06_19-11-16/behavior-videos/FrontCamera/video.mp4"
+group = "808054_2026-04-06_19-11-16_FrontCamera"
+frame_rate = 240.3846
+thermistor = false
+frame = [720, 540]
+box = [276, 293, 96, 96]
+
+[[clip]]
+video = "/data/804430_2025-11-10_23-35-39/behavior-videos/FrontCamera/video.mp4"
+group = "804430_2025-11-10_23-35-39_FrontCamera"
+frame_rate = 240.3846
+thermistor = false
+frame = [720, 540]
+box = [286, 300, 96, 96]
+
+[[clip]]
+video = "/data/822683_2026-02-19_16-49-20/behavior-videos/FrontCamera/video.mp4"
+group = "822683_2026-02-19_16-49-20_FrontCamera"
+frame_rate = 240.3846
+thermistor = false
+frame = [720, 540]
+box = [277, 273, 96, 96]
+
+[[clip]]
+video = "/data/788731_2025-12-09_19-10-07/behavior-videos/FrontCamera/video.mp4"
+group = "788731_2025-12-09_19-10-07_FrontCamera"
+frame_rate = 240.3846
+thermistor = false
+frame = [720, 540]
+box = [277, 280, 96, 96]
+
+[[clip]]
+video = "/data/810351_2025-12-11_00-52-19/behavior-videos/FrontCamera/video.mp4"
+group = "810351_2025-12-11_00-52-19_FrontCamera"
+frame_rate = 240.3846
+thermistor = false
+frame = [720, 540]
+box = [282, 300, 96, 96]
+
+[[clip]]
+video = "/data/867425_2026-10-21_19-17-00/behavior-videos/FrontCamera/video.mp4"
+group = "867425_2026-10-21_19-17-00_FrontCamera"
+frame_rate = 120.1923
+thermistor = false
+frame = [720, 540]
+box = [149, 263, 96, 96]
+
+[[clip]]
+video = "/data/867426_2026-10-26_20-09-01/behavior-videos/FrontCamera/video.mp4"
+group = "867426_2026-10-26_20-09-01_FrontCamera"
+frame_rate = 120.1923
+thermistor = false
+frame = [720, 540]
+box = [336, 304, 96, 96]
+
+[[clip]]
+video = "/data/867428_2026-10-26_20-09-12/behavior-videos/FrontCamera/video.mp4"
+group = "867428_2026-10-26_20-09-12_FrontCamera"
+frame_rate = 120.1923
+thermistor = false
+frame = [720, 540]
+box = [326, 302, 96, 96]
+
+[[clip]]
+video = "/data/878045_2026-10-26_20-09-07/behavior-videos/FrontCamera/video.mp4"
+group = "878045_2026-10-26_20-09-07_FrontCamera"
+frame_rate = 120.1923
+thermistor = false
+frame = [720, 540]
+box = [246, 278, 96, 96]
+
+[[clip]]
+video = "/data/878046_2026-10-26_20-11-15/behavior-videos/FrontCamera/video.mp4"
+group = "878046_2026-10-26_20-11-15_FrontCamera"
+frame_rate = 120.1923
+thermistor = false
+frame = [720, 540]
+box = [310, 294, 96, 96]
