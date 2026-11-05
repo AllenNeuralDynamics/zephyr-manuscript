@@ -1,0 +1,24 @@
+# The paper's zephyr network on parts of fold cv_4's training set, its validation and test
+# sets unchanged (Fig. 3c): nested subsets of 16, 8 and 4 animals (3 draws each) and of 2
+# animals (5 draws), and all animals with the sessions of 8 (3 draws), each draw sharing at
+# most half of its animals with an earlier one. Replaces full-gray-data-size-cv4-v3 and
+# full-gray-data-size-small-v3 (on the dev split then), with the same settings.
+#   uv run launch.py <this folder>/training-size.toml [--smoke] [--submit]
+experiment = "manuscript/experiments/training-size.toml"
+seeds = [17]
+
+[[run]]
+name = "training-size"
+folds = [
+    "cv_4-animals-16", "cv_4-animals-16-draw-2", "cv_4-animals-16-draw-3",
+    "cv_4-animals-8", "cv_4-animals-8-draw-2", "cv_4-animals-8-draw-3",
+    "cv_4-animals-4", "cv_4-animals-4-draw-2", "cv_4-animals-4-draw-3",
+    "cv_4-animals-2", "cv_4-animals-2-draw-2", "cv_4-animals-2-draw-3",
+    "cv_4-animals-2-draw-4", "cv_4-animals-2-draw-5", "cv_4-sessions-like-animals-8",
+    "cv_4-sessions-like-animals-8-draw-2", "cv_4-sessions-like-animals-8-draw-3",
+]
+args = ["--num-workers=4"]
+[run.train_params]
+epochs = 200
+min_epochs = 40
+patience = 12
