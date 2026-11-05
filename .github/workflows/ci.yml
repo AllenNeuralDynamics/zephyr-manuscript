@@ -36,6 +36,42 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+      - name: Assemble the web page
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        # The paper as one HTML page (the template's HTML export), with the PDF beside it.
+        run: |
+          mkdir -p site
+          cp "${{ runner.temp }}/manuscript.pdf" site/zephyr.pdf
+          typst compile --features html --format html --font-path manuscript/template/fonts \
+            --input version="$(git describe --always --dirty --abbrev=40 --exclude='*')" \
+            manuscript/main.typ site/index.html
+          link="<p class=\"keywords\"><a href=\"zephyr.pdf\">PDF</a> · built from <a href=\"https://github.com/${{ github.repository }}/commit/${{ github.sha }}\"><code>${GITHUB_SHA::7}</code></a></p>"
+          sed -i "0,/<body>/s||<body>${link}|" site/index.html
+          grep -q 'href="zephyr.pdf"' site/index.html
+
+      - uses: actions/upload-pages-artifact@v4
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        with:
+          path: site
+
+  pages:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: manuscript
+    runs-on: ubuntu-latest
+    name: Publish the manuscript to GitHub Pages
+    permissions:
+      pages: write
+      id-token: write
+    concurrency:
+      group: pages
+      cancel-in-progress: true
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4
+
   tests:
     runs-on: ubuntu-latest
     name: Benchmark and notebook tests (py${{ matrix.python-version }})
