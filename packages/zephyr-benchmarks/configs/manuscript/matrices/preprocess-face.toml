@@ -1,0 +1,12 @@
+# Rebuild the face camera's cache, features-360x270-box96x96-60hz (the corpus's clips.toml
+# as published, face clips, 360x270 frames, 96x96 boxes), which face, the comparisons and
+# training-size read, and the all-camera list shares. Only if the cache asset is lost:
+# entries already on S3 are skipped, so running it again finishes a stopped one. One
+# computation, --task preprocess (the experiment and seed launch.py adds are ignored).
+#   uv run launch.py <this folder>/preprocess-face.toml [--submit]
+experiment = "manuscript/experiments/face.toml"
+seeds = [17]
+
+[[run]]
+name = "preprocess-face"
+args = ["--task=preprocess"]

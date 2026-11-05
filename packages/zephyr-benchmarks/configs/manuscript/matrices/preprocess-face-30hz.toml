@@ -1,0 +1,10 @@
+# Rebuild features-360x270-box96x96-30hz, the face clips at select_fs = 30 that face-30hz
+# reads (clips/clips-30hz.toml). Only if the cache asset is lost: entries already on S3 are
+# skipped, so running it again finishes a stopped one. One computation, --task preprocess.
+#   uv run launch.py <this folder>/preprocess-face-30hz.toml [--submit]
+experiment = "manuscript/experiments/face-30hz.toml"
+seeds = [17]
+
+[[run]]
+name = "preprocess-face-30hz"
+args = ["--task=preprocess", "--clips=manuscript/clips/clips-30hz.toml"]

@@ -1,0 +1,15 @@
+# Rebuild the dynamic-foraging caches, features-360x270-box96x96-60hz-bottom_camera and
+# -side_camera_right (clips/clips-df.toml), which dynamic-foraging reads. Mounts the
+# zephyr-df-dataset asset, whose clips the list names. Only if the cache asset is lost:
+# entries already on S3 are skipped. One computation, --task preprocess.
+#   uv run launch.py <this folder>/preprocess-dynamic-foraging.toml [--submit]
+experiment = "manuscript/experiments/dynamic-foraging.toml"
+seeds = [17]
+
+[[data_asset]]
+id = "83202e20-159b-4ef1-bb23-ad86d5dafbec"  # s3://aind-scratch-data/vr-foraging/zephyr-df-dataset
+mount = "zephyr-df-dataset"
+
+[[run]]
+name = "preprocess-dynamic-foraging"
+args = ["--task=preprocess", "--clips=manuscript/clips/clips-df.toml"]

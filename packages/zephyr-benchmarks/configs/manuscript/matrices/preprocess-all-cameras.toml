@@ -1,0 +1,16 @@
+# Rebuild the side and front cameras' caches, features-720x540-box96x96-60hz-SideCamera and
+# -FrontCamera (clips/clips-all.toml: their clips on 720x540 frames, 96x96 boxes), which
+# all-cameras, side and front read (side's and front's lists key their clips as this one
+# does). The face's entries are preprocess-face's. Only if the cache asset is lost: entries
+# already on S3 are skipped. One computation per camera, side by side, --task preprocess.
+#   uv run launch.py <this folder>/preprocess-all-cameras.toml [--submit]
+experiment = "manuscript/experiments/all-cameras.toml"
+seeds = [17]
+
+[[run]]
+name = "preprocess-all-cameras-side"
+args = ["--task=preprocess", "--clips=manuscript/clips/clips-all.toml", "--match=_SideCamera[.]mp4$"]
+
+[[run]]
+name = "preprocess-all-cameras-front"
+args = ["--task=preprocess", "--clips=manuscript/clips/clips-all.toml", "--match=_FrontCamera[.]mp4$"]
