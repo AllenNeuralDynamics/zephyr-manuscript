@@ -10,6 +10,7 @@ its figures, tables and values, the benchmarks behind them, and the build of its
 | [`notebooks/`](notebooks/README.md) | marimo notebooks that read the results and draw the figures, tables and `values.toml` |
 | [`packages/zephyr-benchmarks/`](packages/zephyr-benchmarks/README.md) | `zephyr.benchmarks`: the comparison methods, the paper's analyses, experiment configs and results manifests |
 | [`packages/zephyr-dataset/`](packages/zephyr-dataset/README.md) | `zephyr.corpus`: builds the corpus of VR-foraging sessions from one spec (Allen-internal) |
+| [`scripts/`](scripts/) | `demo_video.py`: the demo video of three camera views and their networks' traces, from the results manifest's runs |
 
 zephyr comes from the zephyr repository, pinned to one commit in `pyproject.toml`.
 
@@ -27,5 +28,3 @@ typst compile --font-path manuscript/template/fonts \
   --input version="$(git describe --always --dirty --abbrev=40 --exclude='*')" \
   manuscript/main.typ manuscript.pdf
 ```
-
-Rules for changing anything are in [AGENTS.md](AGENTS.md).
