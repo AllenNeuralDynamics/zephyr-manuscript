@@ -1,0 +1,16 @@
+# The paper's zephyr network on the face camera, the five cross-validation folds (Figs. 1-2,
+# Table 1). Replaces full-gray-cv-v3 (the capsule's matrices/full-gray-cv-v3.toml), with
+# the same settings. Each fold is its own computation; 4 data loader workers (8 ran out of
+# shared memory).
+#   uv run launch.py <this folder>/face.toml [--smoke] [--submit]
+experiment = "manuscript/experiments/face.toml"
+seeds = [17]
+
+[[run]]
+name = "face"
+folds = ["cv_0", "cv_1", "cv_2", "cv_3", "cv_4"]
+args = ["--num-workers=4"]
+[run.train_params]
+epochs = 200
+min_epochs = 40
+patience = 12

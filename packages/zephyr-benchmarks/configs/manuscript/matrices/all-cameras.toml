@@ -1,0 +1,16 @@
+# The paper's zephyr network on the face, side and front cameras together (Fig. 3f),
+# the five cross-validation folds. Replaces full-gray-all-cv-v4 (cv_0 only then), with
+# the same settings. Its cache is a folder of the capsule's cache data asset at
+# /data/zephyr-cache, linked like the face's.
+#   uv run launch.py <this folder>/all-cameras.toml [--smoke] [--submit]
+experiment = "manuscript/experiments/all-cameras.toml"
+seeds = [17]
+
+[[run]]
+name = "all-cameras"
+folds = ["cv_0", "cv_1", "cv_2", "cv_3", "cv_4"]
+args = ["--num-workers=4"]
+[run.train_params]
+epochs = 200
+min_epochs = 40
+patience = 12

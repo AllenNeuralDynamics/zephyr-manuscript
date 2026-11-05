@@ -1,0 +1,21 @@
+# The cv_0 all-camera network refined on the dynamic-foraging dataset, leaving one of its 3
+# animals out each time (Fig. 3g-i, Fig. S8): second wave, after `all-cameras` has
+# finished cv_0 (each fold's init_from is its best.pt). Replaces finetune-df-cv-v4 (one fold,
+# 811021 left out), with the same settings. Mounts the zephyr-df-dataset asset (its clips
+# and its cache folders; its cache keys name its clips at /data/zephyr-df-dataset).
+#   uv run launch.py <this folder>/dynamic-foraging.toml [--smoke] [--submit]
+experiment = "manuscript/experiments/dynamic-foraging.toml"
+seeds = [17]
+
+[[data_asset]]
+id = "83202e20-159b-4ef1-bb23-ad86d5dafbec"  # s3://aind-scratch-data/vr-foraging/zephyr-df-dataset
+mount = "zephyr-df-dataset"
+
+[[run]]
+name = "dynamic-foraging"
+folds = ["cv_0-df-810750", "cv_0-df-811021", "cv_0-df-811026"]
+args = ["--num-workers=4", "--stage=auto"]
+[run.train_params]
+epochs = 200
+min_epochs = 40
+patience = 12

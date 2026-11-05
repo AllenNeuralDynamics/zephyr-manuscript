@@ -1,0 +1,85 @@
+# The comparison methods on the face network's five folds (manuscript/experiments/face.toml):
+# TS-CAN, PhysNet, PhysFormer and RhythmFormer train like zephyr (gray, select_jitter 0,
+# their own learning rates and batches; early-stopped on each fold's validation animals,
+# 200 / 40 / 12), the pixel methods and Facemap run as --task baselines (CPU). Replaces
+# tscan-cv-v3, physnet-cv-v3 and pixel-facemap-cv-v3 (matrices/benchmarks-cv-v3.toml), and
+# physformer-v3 and rhythmformer-v3 (matrices/transformers-v3.toml, on the dev split then).
+#   uv run launch.py <this folder>/comparisons.toml [--smoke] [--only tscan] [--submit]
+experiment = "manuscript/experiments/face.toml"
+seeds = [17]
+
+[[run]]
+name = "tscan"
+folds = ["cv_0", "cv_1", "cv_2", "cv_3", "cv_4"]
+args = ["--num-workers=4"]
+[run.train_params]
+arch = "tscan"
+tscan_img_size = 36
+lr = 3e-3
+w_onset = 0.0
+batch_size = 4
+steps_per_epoch = 400
+epochs = 200
+min_epochs = 40
+patience = 12
+[run.train_params.augmentation]
+select_jitter = 0.0
+
+[[run]]
+name = "physnet"
+folds = ["cv_0", "cv_1", "cv_2", "cv_3", "cv_4"]
+args = ["--num-workers=4"]
+[run.train_params]
+arch = "physnet"
+window = 128
+scales = [1]
+lr = 3e-4
+w_onset = 0.0
+batch_size = 4
+steps_per_epoch = 400
+epochs = 200
+min_epochs = 40
+patience = 12
+[run.train_params.augmentation]
+select_jitter = 0.0
+
+[[run]]
+name = "physformer"
+folds = ["cv_0", "cv_1", "cv_2", "cv_3", "cv_4"]
+args = ["--num-workers=4"]
+[run.train_params]
+arch = "physformer"
+window = 320
+infer_window = 320
+lr = 1e-4
+w_onset = 0.0
+batch_size = 4
+steps_per_epoch = 400
+epochs = 200
+min_epochs = 40
+patience = 12
+[run.train_params.augmentation]
+select_jitter = 0.0
+
+[[run]]
+name = "rhythmformer"
+folds = ["cv_0", "cv_1", "cv_2", "cv_3", "cv_4"]
+args = ["--num-workers=4"]
+[run.train_params]
+arch = "rhythmformer"
+window = 320
+infer_window = 320
+lr = 9e-3
+w_onset = 0.0
+batch_size = 2
+steps_per_epoch = 800
+epochs = 200
+min_epochs = 40
+patience = 12
+[run.train_params.augmentation]
+select_jitter = 0.0
+
+[[run]]
+name = "pixel-facemap"
+folds = ["cv_0", "cv_1", "cv_2", "cv_3", "cv_4"]
+args = ["--task=baselines"]

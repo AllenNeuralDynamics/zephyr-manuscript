@@ -1,0 +1,16 @@
+# The paper's zephyr network on the face camera's frames at 30 Hz (Fig. S3), the five
+# cross-validation folds. Replaces full-gray-30hz-cv-v3, with the same settings. Its
+# cache is a folder of the capsule's cache data asset at /data/zephyr-cache, linked
+# like the face's.
+#   uv run launch.py <this folder>/face-30hz.toml [--smoke] [--submit]
+experiment = "manuscript/experiments/face-30hz.toml"
+seeds = [17]
+
+[[run]]
+name = "face-30hz"
+folds = ["cv_0", "cv_1", "cv_2", "cv_3", "cv_4"]
+args = ["--num-workers=4"]
+[run.train_params]
+epochs = 200
+min_epochs = 40
+patience = 12

@@ -1,0 +1,16 @@
+# The paper's zephyr network on the side camera, 96x96 crops on its 720x540 frames
+# (Fig. 3d-e, Fig. S4, Table S4), the five cross-validation folds. Replaces full-gray-
+# side-720-cv-v4 (cv_0 only then), with the same settings. Its cache is a folder of
+# the capsule's cache data asset at /data/zephyr-cache, linked like the face's.
+#   uv run launch.py <this folder>/side.toml [--smoke] [--submit]
+experiment = "manuscript/experiments/side.toml"
+seeds = [17]
+
+[[run]]
+name = "side"
+folds = ["cv_0", "cv_1", "cv_2", "cv_3", "cv_4"]
+args = ["--num-workers=4"]
+[run.train_params]
+epochs = 200
+min_epochs = 40
+patience = 12

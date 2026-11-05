@@ -42,3 +42,6 @@ notebooks/*.html
 scratch/
 
 *.pdf
+
+# Working notes, kept out of the repository
+manuscript/TODO-reproduce.md

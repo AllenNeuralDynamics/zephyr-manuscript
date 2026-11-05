@@ -1,0 +1,641 @@
+# clips.toml with target_size and boxes x1 (360x270 frame, boxes 96x96), paths under /data/zephyr-df-dataset.
+# Written by scale_clips.py (never edit by hand): write it again when the source changes.
+
+[preprocess]
+target_size = [
+    360,
+    270,
+]
+
+[events]
+method = "adaptive_prominence"
+
+[events.params]
+highpass_hz = 0.2
+distance_s = 0.05
+prominence_frac = 0.2
+window_s = 1.5
+
+[[clip]]
+video = "/data/zephyr-df-dataset/clips/behavior_810750_2025-10-10_12-52-10_span1_bottom_camera.mp4"
+timestamps = "/data/zephyr-df-dataset/clips/behavior_810750_2025-10-10_12-52-10_span1_bottom_camera.parquet"
+thermistor = "/data/zephyr-df-dataset/clips/behavior_810750_2025-10-10_12-52-10_span1_thermistor.parquet"
+group = "behavior_810750_2025-10-10_12-52-10"
+box = [
+    103,
+    71,
+    96,
+    96,
+]
+
+[[clip]]
+video = "/data/zephyr-df-dataset/clips/behavior_810750_2025-10-10_12-52-10_span1_side_camera_right.mp4"
+timestamps = "/data/zephyr-df-dataset/clips/behavior_810750_2025-10-10_12-52-10_span1_side_camera_right.parquet"
+thermistor = "/data/zephyr-df-dataset/clips/behavior_810750_2025-10-10_12-52-10_span1_thermistor.parquet"
+group = "behavior_810750_2025-10-10_12-52-10"
+box = [
+    225,
+    93,
+    96,
+    96,
+]
+
+[[clip]]
+video = "/data/zephyr-df-dataset/clips/behavior_810750_2025-10-10_12-52-10_span2_bottom_camera.mp4"
+timestamps = "/data/zephyr-df-dataset/clips/behavior_810750_2025-10-10_12-52-10_span2_bottom_camera.parquet"
+thermistor = "/data/zephyr-df-dataset/clips/behavior_810750_2025-10-10_12-52-10_span2_thermistor.parquet"
+group = "behavior_810750_2025-10-10_12-52-10"
+box = [
+    103,
+    71,
+    96,
+    96,
+]
+
+[[clip]]
+video = "/data/zephyr-df-dataset/clips/behavior_810750_2025-10-10_12-52-10_span2_side_camera_right.mp4"
+timestamps = "/data/zephyr-df-dataset/clips/behavior_810750_2025-10-10_12-52-10_span2_side_camera_right.parquet"
+thermistor = "/data/zephyr-df-dataset/clips/behavior_810750_2025-10-10_12-52-10_span2_thermistor.parquet"
+group = "behavior_810750_2025-10-10_12-52-10"
+box = [
+    225,
+    93,
+    96,
+    96,
+]
+
+[[clip]]
+video = "/data/zephyr-df-dataset/clips/behavior_810750_2025-10-13_13-00-25_span1_bottom_camera.mp4"
+timestamps = "/data/zephyr-df-dataset/clips/behavior_810750_2025-10-13_13-00-25_span1_bottom_camera.parquet"
+thermistor = "/data/zephyr-df-dataset/clips/behavior_810750_2025-10-13_13-00-25_span1_thermistor.parquet"
+group = "behavior_810750_2025-10-13_13-00-25"
+box = [
+    105,
+    71,
+    96,
+    96,
+]
+
+[[clip]]
+video = "/data/zephyr-df-dataset/clips/behavior_810750_2025-10-13_13-00-25_span1_side_camera_right.mp4"
+timestamps = "/data/zephyr-df-dataset/clips/behavior_810750_2025-10-13_13-00-25_span1_side_camera_right.parquet"
+thermistor = "/data/zephyr-df-dataset/clips/behavior_810750_2025-10-13_13-00-25_span1_thermistor.parquet"
+group = "behavior_810750_2025-10-13_13-00-25"
+box = [
+    226,
+    90,
+    96,
+    96,
+]
+
+[[clip]]
+video = "/data/zephyr-df-dataset/clips/behavior_810750_2025-10-13_13-00-25_span2_bottom_camera.mp4"
+timestamps = "/data/zephyr-df-dataset/clips/behavior_810750_2025-10-13_13-00-25_span2_bottom_camera.parquet"
+thermistor = "/data/zephyr-df-dataset/clips/behavior_810750_2025-10-13_13-00-25_span2_thermistor.parquet"
+group = "behavior_810750_2025-10-13_13-00-25"
+box = [
+    105,
+    71,
+    96,
+    96,
+]
+
+[[clip]]
+video = "/data/zephyr-df-dataset/clips/behavior_810750_2025-10-13_13-00-25_span2_side_camera_right.mp4"
+timestamps = "/data/zephyr-df-dataset/clips/behavior_810750_2025-10-13_13-00-25_span2_side_camera_right.parquet"
+thermistor = "/data/zephyr-df-dataset/clips/behavior_810750_2025-10-13_13-00-25_span2_thermistor.parquet"
+group = "behavior_810750_2025-10-13_13-00-25"
+box = [
+    226,
+    90,
+    96,
+    96,
+]
+
+[[clip]]
+video = "/data/zephyr-df-dataset/clips/behavior_811021_2025-10-07_09-03-26_span1_bottom_camera.mp4"
+timestamps = "/data/zephyr-df-dataset/clips/behavior_811021_2025-10-07_09-03-26_span1_bottom_camera.parquet"
+thermistor = "/data/zephyr-df-dataset/clips/behavior_811021_2025-10-07_09-03-26_span1_thermistor.parquet"
+group = "behavior_811021_2025-10-07_09-03-26"
+box = [
+    102,
+    105,
+    96,
+    96,
+]
+
+[[clip]]
+video = "/data/zephyr-df-dataset/clips/behavior_811021_2025-10-07_09-03-26_span1_side_camera_right.mp4"
+timestamps = "/data/zephyr-df-dataset/clips/behavior_811021_2025-10-07_09-03-26_span1_side_camera_right.parquet"
+thermistor = "/data/zephyr-df-dataset/clips/behavior_811021_2025-10-07_09-03-26_span1_thermistor.parquet"
+group = "behavior_811021_2025-10-07_09-03-26"
+box = [
+    212,
+    96,
+    96,
+    96,
+]
+
+[[clip]]
+video = "/data/zephyr-df-dataset/clips/behavior_811021_2025-10-07_09-03-26_span2_bottom_camera.mp4"
+timestamps = "/data/zephyr-df-dataset/clips/behavior_811021_2025-10-07_09-03-26_span2_bottom_camera.parquet"
+thermistor = "/data/zephyr-df-dataset/clips/behavior_811021_2025-10-07_09-03-26_span2_thermistor.parquet"
+group = "behavior_811021_2025-10-07_09-03-26"
+box = [
+    102,
+    105,
+    96,
+    96,
+]
+
+[[clip]]
+video = "/data/zephyr-df-dataset/clips/behavior_811021_2025-10-07_09-03-26_span2_side_camera_right.mp4"
+timestamps = "/data/zephyr-df-dataset/clips/behavior_811021_2025-10-07_09-03-26_span2_side_camera_right.parquet"
+thermistor = "/data/zephyr-df-dataset/clips/behavior_811021_2025-10-07_09-03-26_span2_thermistor.parquet"
+group = "behavior_811021_2025-10-07_09-03-26"
+box = [
+    212,
+    96,
+    96,
+    96,
+]
+
+[[clip]]
+video = "/data/zephyr-df-dataset/clips/behavior_811021_2025-10-08_09-21-43_span1_bottom_camera.mp4"
+timestamps = "/data/zephyr-df-dataset/clips/behavior_811021_2025-10-08_09-21-43_span1_bottom_camera.parquet"
+thermistor = "/data/zephyr-df-dataset/clips/behavior_811021_2025-10-08_09-21-43_span1_thermistor.parquet"
+group = "behavior_811021_2025-10-08_09-21-43"
+box = [
+    99,
+    106,
+    96,
+    96,
+]
+
+[[clip]]
+video = "/data/zephyr-df-dataset/clips/behavior_811021_2025-10-08_09-21-43_span1_side_camera_right.mp4"
+timestamps = "/data/zephyr-df-dataset/clips/behavior_811021_2025-10-08_09-21-43_span1_side_camera_right.parquet"
+thermistor = "/data/zephyr-df-dataset/clips/behavior_811021_2025-10-08_09-21-43_span1_thermistor.parquet"
+group = "behavior_811021_2025-10-08_09-21-43"
+box = [
+    215,
+    96,
+    96,
+    96,
+]
+
+[[clip]]
+video = "/data/zephyr-df-dataset/clips/behavior_811021_2025-10-08_09-21-43_span2_bottom_camera.mp4"
+timestamps = "/data/zephyr-df-dataset/clips/behavior_811021_2025-10-08_09-21-43_span2_bottom_camera.parquet"
+thermistor = "/data/zephyr-df-dataset/clips/behavior_811021_2025-10-08_09-21-43_span2_thermistor.parquet"
+group = "behavior_811021_2025-10-08_09-21-43"
+box = [
+    99,
+    106,
+    96,
+    96,
+]
+
+[[clip]]
+video = "/data/zephyr-df-dataset/clips/behavior_811021_2025-10-08_09-21-43_span2_side_camera_right.mp4"
+timestamps = "/data/zephyr-df-dataset/clips/behavior_811021_2025-10-08_09-21-43_span2_side_camera_right.parquet"
+thermistor = "/data/zephyr-df-dataset/clips/behavior_811021_2025-10-08_09-21-43_span2_thermistor.parquet"
+group = "behavior_811021_2025-10-08_09-21-43"
+box = [
+    215,
+    96,
+    96,
+    96,
+]
+
+[[clip]]
+video = "/data/zephyr-df-dataset/clips/behavior_811021_2025-10-09_09-41-42_span1_bottom_camera.mp4"
+timestamps = "/data/zephyr-df-dataset/clips/behavior_811021_2025-10-09_09-41-42_span1_bottom_camera.parquet"
+thermistor = "/data/zephyr-df-dataset/clips/behavior_811021_2025-10-09_09-41-42_span1_thermistor.parquet"
+group = "behavior_811021_2025-10-09_09-41-42"
+box = [
+    105,
+    106,
+    96,
+    96,
+]
+
+[[clip]]
+video = "/data/zephyr-df-dataset/clips/behavior_811021_2025-10-09_09-41-42_span1_side_camera_right.mp4"
+timestamps = "/data/zephyr-df-dataset/clips/behavior_811021_2025-10-09_09-41-42_span1_side_camera_right.parquet"
+thermistor = "/data/zephyr-df-dataset/clips/behavior_811021_2025-10-09_09-41-42_span1_thermistor.parquet"
+group = "behavior_811021_2025-10-09_09-41-42"
+box = [
+    212,
+    96,
+    96,
+    96,
+]
+
+[[clip]]
+video = "/data/zephyr-df-dataset/clips/behavior_811021_2025-10-09_09-41-42_span2_bottom_camera.mp4"
+timestamps = "/data/zephyr-df-dataset/clips/behavior_811021_2025-10-09_09-41-42_span2_bottom_camera.parquet"
+thermistor = "/data/zephyr-df-dataset/clips/behavior_811021_2025-10-09_09-41-42_span2_thermistor.parquet"
+group = "behavior_811021_2025-10-09_09-41-42"
+box = [
+    105,
+    106,
+    96,
+    96,
+]
+
+[[clip]]
+video = "/data/zephyr-df-dataset/clips/behavior_811021_2025-10-09_09-41-42_span2_side_camera_right.mp4"
+timestamps = "/data/zephyr-df-dataset/clips/behavior_811021_2025-10-09_09-41-42_span2_side_camera_right.parquet"
+thermistor = "/data/zephyr-df-dataset/clips/behavior_811021_2025-10-09_09-41-42_span2_thermistor.parquet"
+group = "behavior_811021_2025-10-09_09-41-42"
+box = [
+    212,
+    96,
+    96,
+    96,
+]
+
+[[clip]]
+video = "/data/zephyr-df-dataset/clips/behavior_811021_2025-10-10_09-11-44_span1_bottom_camera.mp4"
+timestamps = "/data/zephyr-df-dataset/clips/behavior_811021_2025-10-10_09-11-44_span1_bottom_camera.parquet"
+thermistor = "/data/zephyr-df-dataset/clips/behavior_811021_2025-10-10_09-11-44_span1_thermistor.parquet"
+group = "behavior_811021_2025-10-10_09-11-44"
+box = [
+    103,
+    105,
+    96,
+    96,
+]
+
+[[clip]]
+video = "/data/zephyr-df-dataset/clips/behavior_811021_2025-10-10_09-11-44_span1_side_camera_right.mp4"
+timestamps = "/data/zephyr-df-dataset/clips/behavior_811021_2025-10-10_09-11-44_span1_side_camera_right.parquet"
+thermistor = "/data/zephyr-df-dataset/clips/behavior_811021_2025-10-10_09-11-44_span1_thermistor.parquet"
+group = "behavior_811021_2025-10-10_09-11-44"
+box = [
+    216,
+    94,
+    96,
+    96,
+]
+
+[[clip]]
+video = "/data/zephyr-df-dataset/clips/behavior_811021_2025-10-10_09-11-44_span2_bottom_camera.mp4"
+timestamps = "/data/zephyr-df-dataset/clips/behavior_811021_2025-10-10_09-11-44_span2_bottom_camera.parquet"
+thermistor = "/data/zephyr-df-dataset/clips/behavior_811021_2025-10-10_09-11-44_span2_thermistor.parquet"
+group = "behavior_811021_2025-10-10_09-11-44"
+box = [
+    103,
+    105,
+    96,
+    96,
+]
+
+[[clip]]
+video = "/data/zephyr-df-dataset/clips/behavior_811021_2025-10-10_09-11-44_span2_side_camera_right.mp4"
+timestamps = "/data/zephyr-df-dataset/clips/behavior_811021_2025-10-10_09-11-44_span2_side_camera_right.parquet"
+thermistor = "/data/zephyr-df-dataset/clips/behavior_811021_2025-10-10_09-11-44_span2_thermistor.parquet"
+group = "behavior_811021_2025-10-10_09-11-44"
+box = [
+    216,
+    94,
+    96,
+    96,
+]
+
+[[clip]]
+video = "/data/zephyr-df-dataset/clips/behavior_811021_2025-10-13_09-21-11_span1_bottom_camera.mp4"
+timestamps = "/data/zephyr-df-dataset/clips/behavior_811021_2025-10-13_09-21-11_span1_bottom_camera.parquet"
+thermistor = "/data/zephyr-df-dataset/clips/behavior_811021_2025-10-13_09-21-11_span1_thermistor.parquet"
+group = "behavior_811021_2025-10-13_09-21-11"
+box = [
+    103,
+    108,
+    96,
+    96,
+]
+
+[[clip]]
+video = "/data/zephyr-df-dataset/clips/behavior_811021_2025-10-13_09-21-11_span1_side_camera_right.mp4"
+timestamps = "/data/zephyr-df-dataset/clips/behavior_811021_2025-10-13_09-21-11_span1_side_camera_right.parquet"
+thermistor = "/data/zephyr-df-dataset/clips/behavior_811021_2025-10-13_09-21-11_span1_thermistor.parquet"
+group = "behavior_811021_2025-10-13_09-21-11"
+box = [
+    210,
+    95,
+    96,
+    96,
+]
+
+[[clip]]
+video = "/data/zephyr-df-dataset/clips/behavior_811021_2025-10-13_09-21-11_span2_bottom_camera.mp4"
+timestamps = "/data/zephyr-df-dataset/clips/behavior_811021_2025-10-13_09-21-11_span2_bottom_camera.parquet"
+thermistor = "/data/zephyr-df-dataset/clips/behavior_811021_2025-10-13_09-21-11_span2_thermistor.parquet"
+group = "behavior_811021_2025-10-13_09-21-11"
+box = [
+    103,
+    108,
+    96,
+    96,
+]
+
+[[clip]]
+video = "/data/zephyr-df-dataset/clips/behavior_811021_2025-10-13_09-21-11_span2_side_camera_right.mp4"
+timestamps = "/data/zephyr-df-dataset/clips/behavior_811021_2025-10-13_09-21-11_span2_side_camera_right.parquet"
+thermistor = "/data/zephyr-df-dataset/clips/behavior_811021_2025-10-13_09-21-11_span2_thermistor.parquet"
+group = "behavior_811021_2025-10-13_09-21-11"
+box = [
+    210,
+    95,
+    96,
+    96,
+]
+
+[[clip]]
+video = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-06_09-12-04_span1_bottom_camera.mp4"
+timestamps = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-06_09-12-04_span1_bottom_camera.parquet"
+thermistor = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-06_09-12-04_span1_thermistor.parquet"
+group = "behavior_811026_2025-10-06_09-12-04"
+box = [
+    99,
+    84,
+    96,
+    96,
+]
+
+[[clip]]
+video = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-06_09-12-04_span1_side_camera_right.mp4"
+timestamps = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-06_09-12-04_span1_side_camera_right.parquet"
+thermistor = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-06_09-12-04_span1_thermistor.parquet"
+group = "behavior_811026_2025-10-06_09-12-04"
+box = [
+    222,
+    94,
+    96,
+    96,
+]
+
+[[clip]]
+video = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-06_09-12-04_span2_bottom_camera.mp4"
+timestamps = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-06_09-12-04_span2_bottom_camera.parquet"
+thermistor = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-06_09-12-04_span2_thermistor.parquet"
+group = "behavior_811026_2025-10-06_09-12-04"
+box = [
+    99,
+    84,
+    96,
+    96,
+]
+
+[[clip]]
+video = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-06_09-12-04_span2_side_camera_right.mp4"
+timestamps = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-06_09-12-04_span2_side_camera_right.parquet"
+thermistor = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-06_09-12-04_span2_thermistor.parquet"
+group = "behavior_811026_2025-10-06_09-12-04"
+box = [
+    222,
+    94,
+    96,
+    96,
+]
+
+[[clip]]
+video = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-07_08-31-59_span1_bottom_camera.mp4"
+timestamps = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-07_08-31-59_span1_bottom_camera.parquet"
+thermistor = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-07_08-31-59_span1_thermistor.parquet"
+group = "behavior_811026_2025-10-07_08-31-59"
+box = [
+    103,
+    88,
+    96,
+    96,
+]
+
+[[clip]]
+video = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-07_08-31-59_span1_side_camera_right.mp4"
+timestamps = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-07_08-31-59_span1_side_camera_right.parquet"
+thermistor = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-07_08-31-59_span1_thermistor.parquet"
+group = "behavior_811026_2025-10-07_08-31-59"
+box = [
+    224,
+    89,
+    96,
+    96,
+]
+
+[[clip]]
+video = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-07_08-31-59_span2_bottom_camera.mp4"
+timestamps = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-07_08-31-59_span2_bottom_camera.parquet"
+thermistor = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-07_08-31-59_span2_thermistor.parquet"
+group = "behavior_811026_2025-10-07_08-31-59"
+box = [
+    103,
+    88,
+    96,
+    96,
+]
+
+[[clip]]
+video = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-07_08-31-59_span2_side_camera_right.mp4"
+timestamps = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-07_08-31-59_span2_side_camera_right.parquet"
+thermistor = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-07_08-31-59_span2_thermistor.parquet"
+group = "behavior_811026_2025-10-07_08-31-59"
+box = [
+    224,
+    89,
+    96,
+    96,
+]
+
+[[clip]]
+video = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-08_08-51-07_span1_bottom_camera.mp4"
+timestamps = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-08_08-51-07_span1_bottom_camera.parquet"
+thermistor = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-08_08-51-07_span1_thermistor.parquet"
+group = "behavior_811026_2025-10-08_08-51-07"
+box = [
+    103,
+    88,
+    96,
+    96,
+]
+
+[[clip]]
+video = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-08_08-51-07_span1_side_camera_right.mp4"
+timestamps = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-08_08-51-07_span1_side_camera_right.parquet"
+thermistor = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-08_08-51-07_span1_thermistor.parquet"
+group = "behavior_811026_2025-10-08_08-51-07"
+box = [
+    217,
+    94,
+    96,
+    96,
+]
+
+[[clip]]
+video = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-08_08-51-07_span2_bottom_camera.mp4"
+timestamps = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-08_08-51-07_span2_bottom_camera.parquet"
+thermistor = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-08_08-51-07_span2_thermistor.parquet"
+group = "behavior_811026_2025-10-08_08-51-07"
+box = [
+    103,
+    88,
+    96,
+    96,
+]
+
+[[clip]]
+video = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-08_08-51-07_span2_side_camera_right.mp4"
+timestamps = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-08_08-51-07_span2_side_camera_right.parquet"
+thermistor = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-08_08-51-07_span2_thermistor.parquet"
+group = "behavior_811026_2025-10-08_08-51-07"
+box = [
+    217,
+    94,
+    96,
+    96,
+]
+
+[[clip]]
+video = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-09_09-11-23_span1_bottom_camera.mp4"
+timestamps = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-09_09-11-23_span1_bottom_camera.parquet"
+thermistor = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-09_09-11-23_span1_thermistor.parquet"
+group = "behavior_811026_2025-10-09_09-11-23"
+box = [
+    103,
+    89,
+    96,
+    96,
+]
+
+[[clip]]
+video = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-09_09-11-23_span1_side_camera_right.mp4"
+timestamps = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-09_09-11-23_span1_side_camera_right.parquet"
+thermistor = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-09_09-11-23_span1_thermistor.parquet"
+group = "behavior_811026_2025-10-09_09-11-23"
+box = [
+    220,
+    91,
+    96,
+    96,
+]
+
+[[clip]]
+video = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-09_09-11-23_span2_bottom_camera.mp4"
+timestamps = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-09_09-11-23_span2_bottom_camera.parquet"
+thermistor = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-09_09-11-23_span2_thermistor.parquet"
+group = "behavior_811026_2025-10-09_09-11-23"
+box = [
+    103,
+    89,
+    96,
+    96,
+]
+
+[[clip]]
+video = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-09_09-11-23_span2_side_camera_right.mp4"
+timestamps = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-09_09-11-23_span2_side_camera_right.parquet"
+thermistor = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-09_09-11-23_span2_thermistor.parquet"
+group = "behavior_811026_2025-10-09_09-11-23"
+box = [
+    220,
+    91,
+    96,
+    96,
+]
+
+[[clip]]
+video = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-10_08-41-45_span1_bottom_camera.mp4"
+timestamps = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-10_08-41-45_span1_bottom_camera.parquet"
+thermistor = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-10_08-41-45_span1_thermistor.parquet"
+group = "behavior_811026_2025-10-10_08-41-45"
+box = [
+    99,
+    84,
+    96,
+    96,
+]
+
+[[clip]]
+video = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-10_08-41-45_span1_side_camera_right.mp4"
+timestamps = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-10_08-41-45_span1_side_camera_right.parquet"
+thermistor = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-10_08-41-45_span1_thermistor.parquet"
+group = "behavior_811026_2025-10-10_08-41-45"
+box = [
+    218,
+    88,
+    96,
+    96,
+]
+
+[[clip]]
+video = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-10_08-41-45_span2_bottom_camera.mp4"
+timestamps = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-10_08-41-45_span2_bottom_camera.parquet"
+thermistor = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-10_08-41-45_span2_thermistor.parquet"
+group = "behavior_811026_2025-10-10_08-41-45"
+box = [
+    99,
+    84,
+    96,
+    96,
+]
+
+[[clip]]
+video = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-10_08-41-45_span2_side_camera_right.mp4"
+timestamps = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-10_08-41-45_span2_side_camera_right.parquet"
+thermistor = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-10_08-41-45_span2_thermistor.parquet"
+group = "behavior_811026_2025-10-10_08-41-45"
+box = [
+    218,
+    88,
+    96,
+    96,
+]
+
+[[clip]]
+video = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-13_08-45-58_span1_bottom_camera.mp4"
+timestamps = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-13_08-45-58_span1_bottom_camera.parquet"
+thermistor = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-13_08-45-58_span1_thermistor.parquet"
+group = "behavior_811026_2025-10-13_08-45-58"
+box = [
+    101,
+    87,
+    96,
+    96,
+]
+
+[[clip]]
+video = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-13_08-45-58_span1_side_camera_right.mp4"
+timestamps = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-13_08-45-58_span1_side_camera_right.parquet"
+thermistor = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-13_08-45-58_span1_thermistor.parquet"
+group = "behavior_811026_2025-10-13_08-45-58"
+box = [
+    220,
+    93,
+    96,
+    96,
+]
+
+[[clip]]
+video = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-13_08-45-58_span2_bottom_camera.mp4"
+timestamps = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-13_08-45-58_span2_bottom_camera.parquet"
+thermistor = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-13_08-45-58_span2_thermistor.parquet"
+group = "behavior_811026_2025-10-13_08-45-58"
+box = [
+    101,
+    87,
+    96,
+    96,
+]
+
+[[clip]]
+video = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-13_08-45-58_span2_side_camera_right.mp4"
+timestamps = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-13_08-45-58_span2_side_camera_right.parquet"
+thermistor = "/data/zephyr-df-dataset/clips/behavior_811026_2025-10-13_08-45-58_span2_thermistor.parquet"
+group = "behavior_811026_2025-10-13_08-45-58"
+box = [
+    220,
+    93,
+    96,
+    96,
+]

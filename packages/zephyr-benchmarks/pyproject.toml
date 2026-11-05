@@ -36,3 +36,8 @@ raw-options = { root = "../.." }
 # Ships only zephyr/benchmarks/: the zephyr package itself belongs to zephyr.
 [tool.hatch.build.targets.wheel]
 packages = ["src/zephyr"]
+
+# The configs (experiments, clip lists, matrices, results manifests) ship inside the
+# package as zephyr/benchmarks/configs/, so an install from a commit brings that commit's.
+[tool.hatch.build.targets.wheel.force-include]
+"configs" = "zephyr/benchmarks/configs"
