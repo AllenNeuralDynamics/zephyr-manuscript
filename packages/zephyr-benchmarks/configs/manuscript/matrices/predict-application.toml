@@ -1,7 +1,7 @@
 # The sessions without a thermistor (Fig. 5, Fig. S10): the all-camera network of cv_0
 # (all-cameras, finished) predicts every camera of each session with quality control, its
 # reference the one training wrote (--task predict, predict_capsule.py). One computation
-# per session, side by side, into zephyr-runs/application/<session>_<camera>/; a camera
+# per session, side by side, into zephyr-manuscript-runs/application/<session>_<camera>/; a camera
 # already uploaded is skipped. The sessions' raw data assets are attached to the capsule,
 # each under its name (clips/clips-application.toml names /data/<session>/...).
 #   uv run launch.py <this folder>/predict-application.toml [--smoke] [--submit]

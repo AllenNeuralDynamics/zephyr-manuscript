@@ -1,7 +1,7 @@
 # The dynamic-foraging clips before refining (Fig. 3g-i, the "unrefined" quality-control
 # set of Fig. 4): the all-camera network of cv_0 (all-cameras, finished) predicts every
 # session of the dataset's 3 animals with quality control (--task predict), into
-# zephyr-runs/dynamic-foraging-unrefined/<session>/; the refined networks' are their own
+# zephyr-manuscript-runs/dynamic-foraging-unrefined/<session>/; the refined networks' are their own
 # runs' quality/ folders. Mounts the zephyr-df-dataset asset, whose clips the list names.
 #   uv run launch.py <this folder>/predict-dynamic-foraging.toml [--smoke] [--submit]
 experiment = "manuscript/experiments/all-cameras.toml"

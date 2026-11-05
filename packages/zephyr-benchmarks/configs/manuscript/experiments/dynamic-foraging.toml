@@ -1,6 +1,6 @@
 # The all-camera network of cv_0 (the run `all-cameras`) refined on the dynamic-foraging
 # dataset (zephyr-df-dataset), leaving one of its 3 animals out each time: each fold starts
-# from that network (init_from, fetched from zephyr-runs by train_capsule.py), trains half
+# from that network (init_from, fetched from zephyr-manuscript-runs by train_capsule.py), trains half
 # its windows on the VR clips cv_0 trains on and half on the dynamic-foraging sessions of the
 # two other animals (side and bottom cameras, 96x96 on 360x270), early-stops and picks the
 # onset threshold on cv_0's validation animals, and scores the left-out animal's
