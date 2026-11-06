@@ -50,7 +50,7 @@ L 0 3.5
       </g>
      </g>
      <g id="text_1">
-      <text style="font-size: 6.5px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle" x="35.130847" y="98.613925" transform="rotate(-0 35.130847 98.613925)">Animals</text>
+      <text style="font-size: 6.5px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle" x="31.6" y="98.613925" transform="rotate(-0 31.6 98.613925)">Animals</text>
      </g>
     </g>
     <g id="xtick_2">
@@ -60,7 +60,7 @@ L 0 3.5
       </g>
      </g>
      <g id="text_2">
-      <text style="font-size: 6.5px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle" x="57.89831" y="98.613925" transform="rotate(-0 57.89831 98.613925)">Sessions</text>
+      <text style="font-size: 6.5px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle" x="61.4" y="98.613925" transform="rotate(-0 61.4 98.613925)">Sessions</text>
      </g>
     </g>
     <g id="text_3">
@@ -412,16 +412,16 @@ L 78.389027 86.881748
     <text style="font-size: 6px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #e69f00" x="60.630406" y="45.415912" transform="rotate(-0 60.630406 45.415912)">TS-CAN</text>
    </g>
    <g id="text_13">
-    <text style="font-size: 6px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #d55e00" x="60.630406" y="30.585708" transform="rotate(-0 60.630406 30.585708)">PhysFormer</text>
+    <text style="font-size: 6px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #d55e00" x="60.630406" y="39.026196" transform="rotate(-0 60.630406 39.026196)">PhysFormer</text>
    </g>
    <g id="text_14">
-    <text style="font-size: 6px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #009e73" x="60.630406" y="22.130014" transform="rotate(-0 60.630406 22.130014)">PhysNet</text>
+    <text style="font-size: 6px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #009e73" x="60.630406" y="32.734026" transform="rotate(-0 60.630406 32.734026)">PhysNet</text>
    </g>
    <g id="text_15">
-    <text style="font-size: 6px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #0072b2" x="60.630406" y="15.837827" transform="rotate(-0 60.630406 15.837827)">Zephyr</text>
+    <text style="font-size: 6px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #0072b2" x="60.630406" y="20.149686" transform="rotate(-0 60.630406 20.149686)">Zephyr</text>
    </g>
    <g id="text_16">
-    <text style="font-size: 6px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #882255" x="60.630406" y="9.54564" transform="rotate(-0 60.630406 9.54564)">RhythmFormer</text>
+    <text style="font-size: 6px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #882255" x="60.630406" y="26.441856" transform="rotate(-0 60.630406 26.441856)">RhythmFormer</text>
    </g>
   </g>
   <g id="axes_2">

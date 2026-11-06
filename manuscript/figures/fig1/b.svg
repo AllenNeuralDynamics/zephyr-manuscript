@@ -130,7 +130,7 @@ L 396.07043 17.541655
      </g>
     </g>
     <g id="text_3">
-     <text style="font-size: 7px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif" transform="translate(8.455495 32.931937) rotate(-90)">Speed</text>
+     <text style="font-size: 7px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle" x="8.455495" y="22.811234" transform="rotate(-90 8.455495 22.811234)">Velocity</text>
      <text style="font-size: 7px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif" transform="translate(16.074148 32.530531) rotate(-90)">(cm/s)</text>
     </g>
    </g>
@@ -1503,7 +1503,8 @@ z
    </g>
    <g id="matplotlib.axis_4">
     <g id="text_7">
-     <text style="font-size: 6px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle" x="16.809392" y="58.3671" transform="rotate(-90 16.809392 58.3671)">Thermistor</text>
+     <text style="font-size: 7px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle" x="8.455495" y="58.3671" transform="rotate(-90 8.455495 58.3671)">Thermistor</text>
+     <text style="font-size: 7px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle" x="16.074148" y="58.3671" transform="rotate(-90 16.074148 58.3671)">(a.u.)</text>
     </g>
    </g>
    <g id="patch_14">
@@ -2543,7 +2544,7 @@ L 396.07043 95.028933
      </g>
     </g>
     <g id="text_18">
-     <text style="font-size: 7px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif" transform="translate(8.455495 123.078647) rotate(-90)">Respiration</text>
+     <text style="font-size: 7px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle" x="8.455495" y="105.375131" transform="rotate(-90 8.455495 105.375131)">Respiration rate</text>
      <text style="font-size: 7px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif" transform="translate(16.074148 111.984741) rotate(-90)">(Hz)</text>
     </g>
    </g>

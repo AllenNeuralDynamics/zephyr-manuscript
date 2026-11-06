@@ -64,7 +64,7 @@ L 0 3.5
      </g>
     </g>
     <g id="text_3">
-     <text style="font-size: 7px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle" x="55.444455" y="143.093648" transform="rotate(-0 55.444455 143.093648)">Speed (cm/s)</text>
+     <text style="font-size: 7px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle" x="55.444455" y="143.093648" transform="rotate(-0 55.444455 143.093648)">Velocity (cm/s)</text>
     </g>
    </g>
    <g id="matplotlib.axis_2">
@@ -124,7 +124,7 @@ L -3.5 0
      </g>
     </g>
     <g id="text_9">
-     <text style="font-size: 7px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle" x="7.930837" y="61.866002" transform="rotate(-90 7.930837 61.866002)">Respiration (Hz)</text>
+     <text style="font-size: 7px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle" x="7.930837" y="61.866002" transform="rotate(-90 7.930837 61.866002)">Respiration rate (Hz)</text>
     </g>
    </g>
    <image xlink:href="data:image/png;base64,

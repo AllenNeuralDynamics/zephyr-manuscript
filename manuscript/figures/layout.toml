@@ -20,13 +20,13 @@ what = "Rig rendering: head-fixed mouse on the wheel, front, face and side camer
 kind = "data"
 width_mm = 142
 height_mm = 52
-what = "Thirty seconds of one session: speed, the thermistor and its respiration rate, licks, rewards, odor sites"
+what = "Thirty seconds of one session: velocity, the thermistor and its respiration rate, licks, rewards, odor sites"
 
 [fig1.panels.c]
 kind = "data"
 width_mm = 37
 height_mm = 52
-what = "The same session: respiration rate against speed"
+what = "The same session: respiration rate against velocity"
 
 [fig1.panels.d]
 kind = "data"
@@ -216,31 +216,31 @@ what = "Ten seconds of the marked window around four frames of the face video wi
 kind = "data"
 width_mm = 89.5
 height_mm = 56
-what = "Fifteen seconds of the example session: Zephyr's trace with its inhalations, onset probability, respiration rate with speed, licks, rewards, odor sites"
+what = "Fifteen seconds of the example session: Zephyr's trace with its inhalations, onset probability, respiration rate with velocity, licks, rewards, odor sites"
 
 [fig7.panels.d]
 kind = "data"
 width_mm = 42.75
 height_mm = 45
-what = "The example session: respiration rate and speed around odor onset per kind of site"
+what = "The example session: respiration rate and velocity around odor onset per kind of site"
 
 [fig7.panels.e]
 kind = "data"
 width_mm = 42.75
 height_mm = 45
-what = "Every session: respiration rate and speed around odor onset per kind of site, mean over sessions"
+what = "Every session: respiration rate and velocity around odor onset per kind of site, mean over sessions"
 
 [fig7.panels.f]
 kind = "data"
 width_mm = 42.75
 height_mm = 45
-what = "The example session: respiration rate against running speed"
+what = "The example session: respiration rate against running velocity"
 
 [fig7.panels.g]
 kind = "data"
 width_mm = 42.75
 height_mm = 45
-what = "Every session: respiration rate against running speed, mean over sessions"
+what = "Every session: respiration rate against running velocity, mean over sessions"
 
 # Supplementary figures.
 

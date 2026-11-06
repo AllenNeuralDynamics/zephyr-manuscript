@@ -234,10 +234,10 @@ Finally, to measure how well methods generalize, for all analyses, we held out w
   fit(fig1),
   caption: [*Measuring respiration from face video.* The data panels each show one mouse
     held out from training. *a,* The experimental apparatus where data was recorded from, and thumbnails of the 3 available views in the corpus *b,* A representative snippet of the behavior and physiology signals recorded during a recording session. *c,*
-    Respiration rate against binned running speed for the same example session as in b. Histograms are normalized within speed bin. *d,*
+    Respiration rate against binned running velocity for the same example session as in b. Histograms are normalized within velocity bin. *d,*
     Zephyr Network's architecture (#link(<sec:methods>)[Methods]). A frame encoder and a temporal network feed two
     heads: the waveform head predicts the respiration trace, and the inhalation-onset
-    head the probability that an inhalation starts at each time step. *e,* Eight seconds
+    head the probability that an inhalation starts at each time step. *e,* Four seconds
     of a clip ran through Zephyr. The face frame beside it shows the crop the network sees (orange). The
     predicted respiration (blue) is drawn over the thermistor (black), above the inhalation-onset
     probability (green). Ticks mark the inhalation events extracted from the ground-truth or inferred by Zephyr, respectively.],
@@ -489,7 +489,7 @@ The predicted trace followed the transitions between running, stopping at odor s
 licking (#fig(<fig:application>, "c")), and the respiration rate around odor onset
 differed by the site's outcome as in the thermistor session, both in this session and on
 average over all #v("application.sessions") animals (#fig(<fig:application>, "d,e")).
-The joint distribution of respiration rate and running speed is shown for the same session
+The joint distribution of respiration rate and running velocity is shown for the same session
 and over all sessions in #fig(<fig:application>, "f,g"). Both analyses indicate that the predictions capture the relationship between respiration and behavior reliably.
 
 
@@ -505,10 +505,10 @@ and over all sessions in #fig(<fig:application>, "f,g"). Both analyses indicate 
     lick, its tongue out). Dotted lines mark the frames' times. *c,* Fifteen seconds of
     one animal's session showing (top) predicted waveform, (middle) predicted onset
     probability, and (bottom) the predicted respiration rate (blue) aligned to features
-    of behavior: running speed (grey), licks (yellow tick), reward (orange) and odor
-    onset (gray shading). *d, e,* Respiration rate and running speed around odor onset,
-    broken down by trail outcome. *f, g,* Respiration rate plotted against running speed
-    (as in #fig(<fig:overview>, "c")), as the distribution of rates in each speed bin.
+    of behavior: running velocity (grey), licks (yellow tick), reward (orange) and odor
+    onset (gray shading). *d, e,* Respiration rate and running velocity around odor onset,
+    broken down by trail outcome. *f, g,* Respiration rate plotted against running velocity
+    (as in #fig(<fig:overview>, "c")), as the distribution of rates in each velocity bin.
     *d, f,* The session of *c* (*d*: n = #v("application.sites_rewarded"),
     #v("application.sites_unrewarded") and #v("application.sites_skipped") sites,
     respectively; mean over sites with its 95% bootstrap interval). *e, g,* All sessions,
