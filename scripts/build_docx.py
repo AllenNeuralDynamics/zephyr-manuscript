@@ -17,6 +17,7 @@ import re
 import subprocess
 import sys
 import tempfile
+from html import escape
 from pathlib import Path
 
 SVG = re.compile(r"<svg\b[^>]*>.*?</svg>", re.DOTALL)
@@ -87,6 +88,10 @@ def main() -> int:
     ap.add_argument("--font-path", help="extra font directory for Typst")
     ap.add_argument("--ppi", type=int, default=200, help="figure resolution")
     ap.add_argument("--reference-doc", help="Word file whose styles Pandoc should use")
+    ap.add_argument(
+        "--version",
+        help="commit to print at the top, as the PDF does ('Built from: ...')",
+    )
     args = ap.parse_args()
 
     html = args.html.read_text(encoding="utf-8")
@@ -102,6 +107,9 @@ def main() -> int:
             return f'<img src="{png.name}" alt="Figure panel {count}">'
 
         html = SVG.sub(swap, html)
+        if args.version:
+            stamp = f"<p><small>Built from: {escape(args.version)}</small></p>"
+            html = re.sub(r"<body[^>]*>", lambda m: m.group(0) + stamp, html, count=1)
         page = work / "manuscript.html"
         page.write_text(html, encoding="utf-8")
 
