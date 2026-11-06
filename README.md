@@ -28,3 +28,13 @@ typst compile --font-path manuscript/template/fonts \
   --input version="$(git describe --always --dirty --abbrev=40 --exclude='*')" \
   manuscript/main.typ manuscript.pdf
 ```
+
+An editable Word copy (for collaborators who comment in Word) is made from the HTML export
+through Pandoc; CI builds it and links it from the web page:
+
+```bash
+typst compile --features html --format html --font-path manuscript/template/fonts   manuscript/main.typ manuscript.html
+python scripts/build_docx.py manuscript.html manuscript.docx --font-path manuscript/template/fonts
+```
+
+It needs `pandoc` on the path. It is a convenience copy: the PDF is the typeset version.

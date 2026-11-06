@@ -36,18 +36,39 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+      - name: Export the HTML page
+        # The template's HTML export; the web page and the Word file are both made from it.
+        run: >-
+          typst compile --features html --format html --font-path manuscript/template/fonts
+          --input version="$(git describe --always --dirty --abbrev=40 --exclude='*')"
+          manuscript/main.typ "${{ runner.temp }}/manuscript.html"
+
+      - name: Build the Word version
+        # Typst has no DOCX export: HTML -> Pandoc. Figures are rasterised first (script docstring).
+        run: |
+          sudo apt-get update && sudo apt-get install -y pandoc
+          python3 scripts/build_docx.py "${{ runner.temp }}/manuscript.html" "${{ runner.temp }}/manuscript.docx"             --font-path manuscript/template/fonts
+
+      - name: Upload Word version as artifact
+        uses: actions/upload-artifact@v7
+        with:
+          path: ${{ runner.temp }}/manuscript.docx
+          archive: false
+          if-no-files-found: error
+          retention-days: 30
+
       - name: Assemble the web page
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
-        # The paper as one HTML page (the template's HTML export), with the PDF beside it.
+        # The paper as one HTML page, with the PDF and the Word file beside it.
         run: |
           mkdir -p site
           cp "${{ runner.temp }}/manuscript.pdf" site/zephyr.pdf
-          typst compile --features html --format html --font-path manuscript/template/fonts \
-            --input version="$(git describe --always --dirty --abbrev=40 --exclude='*')" \
-            manuscript/main.typ site/index.html
-          link="<p class=\"keywords\"><a href=\"zephyr.pdf\">PDF</a> · built from <a href=\"https://github.com/${{ github.repository }}/commit/${{ github.sha }}\"><code>${GITHUB_SHA::7}</code></a></p>"
+          cp "${{ runner.temp }}/manuscript.docx" site/zephyr.docx
+          cp "${{ runner.temp }}/manuscript.html" site/index.html
+          link="<p class=\"keywords\"><a href=\"zephyr.pdf\">PDF</a> · <a href=\"zephyr.docx\">Word</a> · built from <a href=\"https://github.com/${{ github.repository }}/commit/${{ github.sha }}\"><code>${GITHUB_SHA::7}</code></a></p>"
           sed -i "0,/<body>/s||<body>${link}|" site/index.html
           grep -q 'href="zephyr.pdf"' site/index.html
+          grep -q 'href="zephyr.docx"' site/index.html
 
       - uses: actions/upload-pages-artifact@v4
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
