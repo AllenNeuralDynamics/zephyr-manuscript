@@ -107,7 +107,7 @@ def main() -> int:
 
         # `-smart` keeps the typographic quotes Typst already produced as they are.
         cmd = ["pandoc", str(page), "-f", "html-smart", "-o", str(args.docx.resolve())]
-        cmd += ["--resource-path", str(work), "--number-sections=false"]
+        cmd += ["--resource-path", str(work)]
         if args.reference_doc:
             cmd += ["--reference-doc", args.reference_doc]
         subprocess.run(cmd, check=True, cwd=work)
