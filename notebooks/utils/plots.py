@@ -591,7 +591,9 @@ def task_stretch_panel(
     )
     r.set_xlim(t0, t1)
     r.set_ylim(0, 12)
-    r.set_ylabel("Respiration rate\n(Hz)", **({"color": colour} if speed_on_rate else {}))
+    r.set_ylabel(
+        "Respiration rate\n(Hz)", **({"color": colour} if speed_on_rate else {})
+    )
     r.set_xlabel("Time (s)")
     fig.align_ylabels(traces)
     return fig
