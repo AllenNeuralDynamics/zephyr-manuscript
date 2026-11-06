@@ -283,11 +283,11 @@ def task_summary_panel(
     speed_range: tuple[float, float, float] = (-5.0, 60.0, 5.0),
     rate_hz: tuple[float, float] = (1.0, 11.0),
 ) -> Figure:
-    """Sniffing in the task. Top, breathing rate and speed around odor onset per kind
+    """Sniffing in the task. Top, breathing rate and velocity around odor onset per kind
     of site (*aligned*: ``site``, ``signal`` (``rate`` or ``speed``), ``lag``,
     ``mean`` with its 95% bootstrap interval ``low``, ``high``). Bottom, breathing rate against speed over every sample of
     *samples* (``speed``, ``rate``): the share of each speed bin at each rate (each
-    speed bin sums to 1). Speed bins are ``(low, high, step)`` of *speed_range*; rate bins
+    speed bin sums to 1). Velocity bins are ``(low, high, step)`` of *speed_range*; rate bins
     over *rate_hz* hold whole numbers of intervals of the *grid_hz* grid the rate's
     events lie on (:func:`frame_rate_bins`)."""
     fig, ax = style.panel(
@@ -316,9 +316,9 @@ def task_summary_panel(
             target.plot(g["lag"], g["mean"], color=colour, lw=0.9)
     for target in (a, v):
         target.axvline(0, color="0.3", lw=0.5)
-    a.set_ylabel("Respiration\n(Hz)")
+    a.set_ylabel("Respiration rate\n(Hz)")
     a.tick_params(labelbottom=False)
-    v.set_ylabel("Speed\n(cm/s)")
+    v.set_ylabel("Velocity\n(cm/s)")
     v.set_xlabel("From odor onset (s)")
     v.set_xlim(aligned["lag"].min(), aligned["lag"].max())
     h = ax["heat"]
@@ -335,7 +335,7 @@ def _rate_speed(
     speed_range: tuple[float, float, float],
     rate_hz: tuple[float, float],
 ) -> None:
-    """Respiration rate against speed on *h* (see :func:`task_summary_panel`)."""
+    """Respiration rate against velocity on *h* (see :func:`task_summary_panel`)."""
     speed_bins, rate_bins = rate_speed_bins(grid_hz, speed_range, rate_hz)
     counts = analysis.rate_speed_counts(samples, speed_bins, rate_bins)
     _share_mesh(fig, h, analysis.rate_given_speed(counts), speed_bins, rate_bins)
@@ -346,7 +346,7 @@ def rate_speed_bins(
     speed_range: tuple[float, float, float] = (-5.0, 60.0, 5.0),
     rate_hz: tuple[float, float] = (1.0, 11.0),
 ) -> tuple[NDArray, NDArray]:
-    """Speed bins, ``(low, high, step)`` of *speed_range*, and respiration-rate bins over
+    """Velocity bins, ``(low, high, step)`` of *speed_range*, and respiration-rate bins over
     *rate_hz* that hold whole numbers of intervals of the *grid_hz* grid
     (:func:`frame_rate_bins`)."""
     lo, hi, step = speed_range
@@ -358,8 +358,8 @@ def _share_mesh(
 ) -> None:
     """*share* (speed bins x rate bins, each speed bin summing to 1) on *h*."""
     image = h.pcolormesh(speed_bins, rate_bins, share.T, cmap="Blues", rasterized=True)
-    h.set_xlabel("Speed (cm/s)")
-    h.set_ylabel("Respiration (Hz)")
+    h.set_xlabel("Velocity (cm/s)")
+    h.set_ylabel("Respiration rate (Hz)")
     h.set_ylim(rate_bins[0], rate_bins[-1])
     h.grid(False)
     bar = fig.colorbar(image, ax=h, fraction=0.06, pad=0.02, aspect=15)
@@ -375,7 +375,7 @@ def share_heat_panel(
     rate_bins: NDArray,
     title: str = "",
 ) -> Figure:
-    """Respiration rate against speed from a precomputed *share* (speed bins x rate
+    """Respiration rate against velocity from a precomputed *share* (speed bins x rate
     bins, :func:`analysis.rate_given_speed`)."""
     fig, ax = style.panel(width_mm, height_mm, [["heat"]])
     _share_mesh(fig, ax["heat"], share, speed_bins, rate_bins)
@@ -392,7 +392,7 @@ def aligned_panel(
     title: str = "",
     legend_columns: int | None = None,
 ) -> Figure:
-    """Respiration rate (top) and running speed (bottom) around odor onset per kind of
+    """Respiration rate (top) and running velocity (bottom) around odor onset per kind of
     site (*aligned*: ``kind``, ``signal`` (``rate`` or ``speed``), ``lag``, ``mean``,
     ``low``, ``high``, from :func:`analysis.odor_aligned` or
     :func:`analysis.aligned_across_units`), the band its interval."""
@@ -429,8 +429,8 @@ def aligned_panel(
     if title:
         rows = -(-len(style.SITES) // (legend_columns or len(style.SITES)))
         ax["rate"].set_title(title, fontsize=6.5, pad=3 + 8 * rows if legend else 3)
-    ax["rate"].set_ylabel("Respiration\n(Hz)")
-    ax["speed"].set_ylabel("Speed\n(cm/s)")
+    ax["rate"].set_ylabel("Respiration rate\n(Hz)")
+    ax["speed"].set_ylabel("Velocity\n(cm/s)")
     ax["speed"].set_xlabel("From odor onset (s)")
     ax["speed"].set_xlim(aligned["lag"].min(), aligned["lag"].max())
     fig.align_ylabels(list(ax.values()))
@@ -460,7 +460,7 @@ def task_stretch_panel(
     sites: pd.DataFrame,
     licks: NDArray,
     rewards: NDArray,
-    label: str = "Thermistor",
+    label: str = "Thermistor\n(a.u.)",
     colour: str = style.TRUTH,
     inhalations: NDArray | None = None,
     onset: pd.DataFrame | None = None,
@@ -523,11 +523,11 @@ def task_stretch_panel(
         s = r.twinx()
         s.spines["right"].set_visible(True)
         s.grid(False)
-        s.set_ylabel("Speed (cm/s)", color=style.SPEED)
+        s.set_ylabel("Velocity (cm/s)", color=style.SPEED)
         s.tick_params(axis="y", colors=style.SPEED)
     else:
         s = ax["speed"]
-        s.set_ylabel("Speed\n(cm/s)")
+        s.set_ylabel("Velocity\n(cm/s)")
     s.plot(example["time"], example["speed"], color=style.SPEED, lw=0.7)
     keep = _inside(thermistor["time"].to_numpy(), t0, t1)
     w.plot(
@@ -549,7 +549,7 @@ def task_stretch_panel(
             transform=w.get_xaxis_transform(),
         )
     w.set_yticks([])
-    w.set_ylabel(label, fontsize=6)
+    w.set_ylabel(label)
     w.spines["left"].set_visible(False)
     r.plot(example["time"], example["rate"], color=colour, lw=0.7)
     shown = licks[_inside(licks, t0, t1)]
@@ -591,7 +591,7 @@ def task_stretch_panel(
     )
     r.set_xlim(t0, t1)
     r.set_ylim(0, 12)
-    r.set_ylabel("Respiration\n(Hz)", **({"color": colour} if speed_on_rate else {}))
+    r.set_ylabel("Respiration rate\n(Hz)", **({"color": colour} if speed_on_rate else {}))
     r.set_xlabel("Time (s)")
     fig.align_ylabels(traces)
     return fig
@@ -1209,7 +1209,14 @@ def sets_panel(
     ``method``, ``mean``, ``low``, ``high``), joined by a line, the method named at the
     last set if *labels* (on the *label_on* metric only, when given), or in a legend at
     *legend* (a location) on the last metric."""
-    fig, ax = style.panel(width_mm, height_mm, [list(metrics)], sharey=True)
+    # Each metric's axes as wide as its x range, so the set names have the same room
+    # whether or not the method names are written beside the last set.
+    span = [
+        len(sets) + (0.65 if labels and label_on in (None, m) else 0.0) for m in metrics
+    ]
+    fig, ax = style.panel(
+        width_mm, height_mm, [list(metrics)], sharey=True, width_ratios=span
+    )
     for metric in metrics:
         a = ax[metric]
         d = summary[summary["metric"] == metric].set_index(["set", "method"])
@@ -1234,12 +1241,13 @@ def sets_panel(
                         capsize=0,
                     )
             ends.append((y[-1], method))
-        # Names at the last set, nudged apart so they do not overlap.
-        ends.sort()
+        # Names at the last set, Zephyr on top and the rest below it, nudged apart so
+        # they do not overlap.
+        ends.sort(key=lambda e: (e[1] != "Zephyr", -e[0]))
         placed: list[float] = []
         named = labels and label_on in (None, metric)
         for y, method in ends if named else []:
-            y_text = max(y, placed[-1] + 0.045) if placed else y
+            y_text = min(y, placed[-1] - 0.045) if placed else y
             placed.append(y_text)
             a.text(
                 len(sets) - 1 + 0.12,
@@ -3348,8 +3356,8 @@ def window_examples_panel(
         p.set_yticks([0, 1])
         p.set_xlim(e["time"][0], e["time"][-1])
         if i % cols == 0:
-            t.set_ylabel("Trace (z)", fontsize=6)
-            p.set_ylabel("Onset (p)", fontsize=6)
+            t.set_ylabel("Respiration (z)")
+            p.set_ylabel("Onset (p)")
         if i >= n - cols:
             p.set_xlabel("Time in the window (s)" if shots else "Time (s)")
     return fig

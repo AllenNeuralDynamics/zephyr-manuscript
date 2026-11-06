@@ -46,7 +46,7 @@ def encoder_layers(net: nn.Module, side: int) -> list[Layer]:
         stride = conv.stride[-1]
         side = (side + 2 * conv.padding[-1] - conv.kernel_size[-1]) // stride + 1
         k = "×".join(str(v) for v in conv.kernel_size)
-        kind = "Conv3D" if isinstance(conv, nn.Conv3d) else "Conv"
+        kind = "Conv3d" if isinstance(conv, nn.Conv3d) else "Conv2d"
         layers.append(Layer(side, conv.out_channels, f"{kind} {k}, /{stride}"))
     pool = encoder.pool.output_size
     pool = pool if isinstance(pool, int) else pool[0]

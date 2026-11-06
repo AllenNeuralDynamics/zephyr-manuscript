@@ -95,7 +95,8 @@ L 0 3.5
    </g>
    <g id="matplotlib.axis_2">
     <g id="text_1">
-     <text style="font-size: 6px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle" x="16.809275" y="33.649665" transform="rotate(-90 16.809275 33.649665)">Zephyr (z)</text>
+     <text style="font-size: 7px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle" x="8.455495" y="33.649665" transform="rotate(-90 8.455495 33.649665)">Respiration</text>
+     <text style="font-size: 7px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle" x="16.074148" y="33.649665" transform="rotate(-90 16.074148 33.649665)">(z)</text>
     </g>
    </g>
    <g id="patch_3">
@@ -1661,7 +1662,7 @@ L 226.06745 103.945674
      </g>
     </g>
     <g id="text_18">
-     <text style="font-size: 7px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; fill: #0072b2" transform="translate(8.455495 132.964125) rotate(-90)">Respiration</text>
+     <text style="font-size: 7px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; fill: #0072b2; text-anchor: middle" x="8.455495" y="115.260609" transform="rotate(-90 8.455495 115.260609)">Respiration rate</text>
      <text style="font-size: 7px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; fill: #0072b2" transform="translate(16.074148 121.870219) rotate(-90)">(Hz)</text>
     </g>
    </g>
@@ -1928,7 +1929,7 @@ L 3.5 0
      </g>
     </g>
     <g id="text_21">
-     <text style="font-size: 7px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #7f7f7f" x="249.39286" y="115.261781" transform="rotate(-90 249.39286 115.261781)">Speed (cm/s)</text>
+     <text style="font-size: 7px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #7f7f7f" x="249.39286" y="115.261781" transform="rotate(-90 249.39286 115.261781)">Velocity (cm/s)</text>
     </g>
    </g>
    <g id="line2d_40">

@@ -9,19 +9,19 @@
 <path d="M18.70,15.82 L21.60,15.82" stroke="#333" stroke-width="0.3" fill="none" marker-end="url(#arrow)"/>
 <path d="M22.2,13.522460446135529 l1.4349999999999998,-1.025 h8.797539553864471 l-1.4349999999999998,1.025 z" fill="#a9c8e4" stroke="#4a6f94" stroke-width="0.15"/><path d="M30.99753955386447,22.32 l1.4349999999999998,-1.025 v-8.797539553864471 l-1.4349999999999998,1.025 z" fill="#7fa9d1" stroke="#4a6f94" stroke-width="0.15"/><rect x="22.2" y="13.522460446135529" width="8.797539553864471" height="8.797539553864471" fill="#d6e6f4" stroke="#4a6f94" stroke-width="0.15"/>
 <text x="27.32" y="25.72" font-size="1.9" fill="#222222" text-anchor="middle" font-weight="normal">48²×32</text>
-<text x="27.32" y="28.12" font-size="1.9" fill="#666666" text-anchor="middle" font-weight="normal">Conv3D</text>
+<text x="27.32" y="28.12" font-size="1.9" fill="#666666" text-anchor="middle" font-weight="normal">Conv3d</text>
 <text x="27.32" y="30.22" font-size="1.9" fill="#666666" text-anchor="middle" font-weight="normal">3×5×5, /2</text>
 <path d="M36.632539553864476,15.76724718351938 l2.3099999999999996,-1.65 h6.552752816480621 l-2.3099999999999996,1.65 z" fill="#a9c8e4" stroke="#4a6f94" stroke-width="0.15"/><path d="M43.185292370345095,22.32 l2.3099999999999996,-1.65 v-6.552752816480621 l-2.3099999999999996,1.65 z" fill="#7fa9d1" stroke="#4a6f94" stroke-width="0.15"/><rect x="36.632539553864476" y="15.76724718351938" width="6.552752816480621" height="6.552752816480621" fill="#d6e6f4" stroke="#4a6f94" stroke-width="0.15"/>
 <text x="41.06" y="25.72" font-size="1.9" fill="#222222" text-anchor="middle" font-weight="normal">24²×64</text>
-<text x="41.06" y="28.12" font-size="1.9" fill="#666666" text-anchor="middle" font-weight="normal">Conv</text>
+<text x="41.06" y="28.12" font-size="1.9" fill="#666666" text-anchor="middle" font-weight="normal">Conv2d</text>
 <text x="41.06" y="30.22" font-size="1.9" fill="#666666" text-anchor="middle" font-weight="normal">3×3, /2</text>
 <path d="M49.6952923703451,17.24825411250741 l3.1849999999999996,-2.275 h5.071745887492588 l-3.1849999999999996,2.275 z" fill="#a9c8e4" stroke="#4a6f94" stroke-width="0.15"/><path d="M54.76703825783769,22.32 l3.1849999999999996,-2.275 v-5.071745887492588 l-3.1849999999999996,2.275 z" fill="#7fa9d1" stroke="#4a6f94" stroke-width="0.15"/><rect x="49.6952923703451" y="17.24825411250741" width="5.071745887492588" height="5.071745887492588" fill="#d6e6f4" stroke="#4a6f94" stroke-width="0.15"/>
 <text x="53.82" y="25.72" font-size="1.9" fill="#222222" text-anchor="middle" font-weight="normal">12²×96</text>
-<text x="53.82" y="28.12" font-size="1.9" fill="#666666" text-anchor="middle" font-weight="normal">Conv</text>
+<text x="53.82" y="28.12" font-size="1.9" fill="#666666" text-anchor="middle" font-weight="normal">Conv2d</text>
 <text x="53.82" y="30.22" font-size="1.9" fill="#666666" text-anchor="middle" font-weight="normal">3×3, /2</text>
 <path d="M62.15203825783769,18.225354291862004 l4.06,-2.9 h4.094645708137998 l-4.06,2.9 z" fill="#a9c8e4" stroke="#4a6f94" stroke-width="0.15"/><path d="M66.24668396597569,22.32 l4.06,-2.9 v-4.094645708137998 l-4.06,2.9 z" fill="#7fa9d1" stroke="#4a6f94" stroke-width="0.15"/><rect x="62.15203825783769" y="18.225354291862004" width="4.094645708137998" height="4.094645708137998" fill="#d6e6f4" stroke="#4a6f94" stroke-width="0.15"/>
 <text x="66.23" y="25.72" font-size="1.9" fill="#222222" text-anchor="middle" font-weight="normal">6²×128</text>
-<text x="66.23" y="28.12" font-size="1.9" fill="#666666" text-anchor="middle" font-weight="normal">Conv</text>
+<text x="66.23" y="28.12" font-size="1.9" fill="#666666" text-anchor="middle" font-weight="normal">Conv2d</text>
 <text x="66.23" y="30.22" font-size="1.9" fill="#666666" text-anchor="middle" font-weight="normal">3×3, /2</text>
 <path d="M74.50668396597568,19.139934147896106 l4.06,-2.9 h3.180065852103895 l-4.06,2.9 z" fill="#a9c8e4" stroke="#4a6f94" stroke-width="0.15"/><path d="M77.68674981807958,22.32 l4.06,-2.9 v-3.180065852103895 l-4.06,2.9 z" fill="#7fa9d1" stroke="#4a6f94" stroke-width="0.15"/><rect x="74.50668396597568" y="19.139934147896106" width="3.180065852103895" height="3.180065852103895" fill="#d6e6f4" stroke="#4a6f94" stroke-width="0.15"/>
 <text x="78.13" y="25.72" font-size="1.9" fill="#222222" text-anchor="middle" font-weight="normal">2²×128</text>

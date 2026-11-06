@@ -61,7 +61,7 @@ def example_clip():
     zephyr = runs.prediction(runs.SINGLE, stem)
     origin = float(zephyr["times"][0])
     # The excerpt of it shown in Fig. 1e: start (s from the clip's start) and length.
-    excerpt = (269.0, 8.0)
+    excerpt = (271.0, 4.0)
     return excerpt, origin, stem, truth, zephyr
 
 
@@ -274,7 +274,7 @@ def fig1e_md():
     mo.md("""
     ## Fig. 1e: an example prediction
 
-    The clip's face frame with the crop the network sees, then eight seconds of the
+    The clip's face frame with the crop the network sees, then four seconds of the
     same test-A clip: the network's trace
     over the thermistor and its onset probability, with the thermistor's inhales
     (black) and exhales (grey) and the head's inhales (blue).
@@ -1222,7 +1222,7 @@ def fig7(qc_windows):
     )
     _examples = [
         {
-            "title": f"{_w.mark}  {_w.session}",
+            "title": _w.session,
             "time": _times - _zero,
             "signal": _t["signal"][_keep],
             "onset": _t["onset"][_keep],
@@ -1263,7 +1263,7 @@ def fig7(qc_windows):
         _shown.assign(odor=_shown["odor"] - _start, leave=_shown["leave"] - _start),
         _s["licks"] - _start,
         _onsets["reward"].dropna().to_numpy() - _start,
-        label="Zephyr (z)",
+        label="Respiration\n(z)",
         colour=style.color("Zephyr"),
         inhalations=_s["head"] - _start,
         speed_on_rate=True,
