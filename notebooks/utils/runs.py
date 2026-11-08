@@ -23,7 +23,7 @@ import pandas as pd
 import torch
 
 from zephyr import features
-from zephyr.benchmarks import analysis, baselines, common, timing
+from zephyr.benchmarks import analysis, baselines, common, storage, timing
 from zephyr.benchmarks.config import ReportedRun, ResultsManifest
 from zephyr.benchmarks.runner import load_checkpoint
 from zephyr.config import ClipList, TrainParams, load
@@ -218,30 +218,6 @@ def training(name: str) -> pd.DataFrame:
 def available(names) -> list[str]:
     """The methods of *names* whose run has finished."""
     return [n for n in names if evaluation(n) is not None]
-
-
-def runs_table(names=ALL) -> pd.DataFrame:
-    """One row per method: its S3 folder, seeds finished, and whether it has a head."""
-    rows = []
-    for name in names:
-        m = RUNS[name]
-        done = (
-            seeds(folder(m))
-            if m.kind == "network"
-            else ("—",)
-            if evaluation(name)
-            else ()
-        )
-        rows.append(
-            {
-                "method": name,
-                "run": m.run + (f" ({m.kind}/{m.variant})" if m.variant else ""),
-                "S3": url(m),
-                "seeds": ", ".join(done) if done else "not finished",
-                "inhale events": "onset head" if m.head else "DSP on the trace",
-            }
-        )
-    return pd.DataFrame(rows)
 
 
 # --- scores, re-scored here by zephyr's scorer -----------------------------------------
@@ -918,46 +894,6 @@ def _all_entries() -> dict[str, features.ClipEntry]:
     return out
 
 
-def split_stems() -> dict[str, list[str]]:
-    """Clip stems of the training and validation sets and of each test set."""
-    folds = pd.read_parquet(root() / "dataset" / "raw" / "folds.parquet")
-    sets = dict(zip(folds["session_id"], folds["set"], strict=True))
-    names = {"train": "Train", "val": "Validation"}
-    out: dict[str, list[str]] = {"Train": [], "Validation": []}
-    for stem in _all_entries():
-        s = names.get(sets.get(stem.rsplit("_span", 1)[0]))
-        if s:
-            out[s].append(stem)
-    for stem, name in clip_sets().items():
-        out.setdefault(name, []).append(stem)
-    return out
-
-
-def rate_distribution() -> pd.DataFrame:
-    """:func:`zephyr.benchmarks.analysis.rate_distribution` of every split, from each
-    clip's cached thermistor events."""
-    entries = _all_entries()
-    return analysis.rate_distribution(
-        {
-            label: [np.load(entries[s].events)["onset_times"] for s in stems]
-            for label, stems in split_stems().items()
-        }
-    )
-
-
-def breath_rates() -> dict[str, np.ndarray]:
-    """Every thermistor breath's rate (1 / interval to the next inhale, Hz) in the
-    training and validation sets and in each test set, from each clip's cached events."""
-    entries = _all_entries()
-    return {
-        label: np.concatenate(
-            [1.0 / np.diff(np.load(entries[s].events)["onset_times"]) for s in stems]
-        )
-        for label, stems in split_stems().items()
-        if stems
-    }
-
-
 def animal_breath_rates() -> dict[str, np.ndarray]:
     """Every thermistor breath's rate (Hz) per animal, over the clips of every session
     the corpus assigns to a set, from each clip's cached events."""
@@ -974,26 +910,11 @@ def animal_breath_rates() -> dict[str, np.ndarray]:
     return {k: np.concatenate(v) for k, v in out.items()}
 
 
-def frame_embeddings(stem: str, seconds: float = 60.0) -> tuple[np.ndarray, np.ndarray]:
-    """The reference network's frame embeddings over the first *seconds* of a clip
-    (:func:`zephyr.benchmarks.analysis.frame_embeddings`); cached."""
-    path = PREDICTIONS / "embeddings" / f"{stem}-{seconds:g}s.npz"
-    if not path.is_file():
-        model, mean, std, _, chunk = network(REFERENCE)
-        times, emb = analysis.frame_embeddings(
-            model, mean, std, entry(stem), seconds, device(), chunk
-        )
-        path.parent.mkdir(parents=True, exist_ok=True)
-        np.savez(path, times=times, embeddings=emb)
-    s = np.load(path)
-    return s["times"], s["embeddings"]
-
-
 # --- a run's own held-out clips, made here ------------------------------------------
 
 REMOTE_DATASET = "/data/zephyr-dataset"
 """Where the capsule mounts the dataset: the root a run's clip lists name."""
-DATASET_BUCKET = "aind-scratch-data/vr-foraging/zephyr-dataset"
+DATASET_BUCKET = storage.key("zephyr-dataset")
 
 
 def held_out_entries(

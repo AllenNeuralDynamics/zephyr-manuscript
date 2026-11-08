@@ -143,7 +143,8 @@ within about the seed-to-seed spread rather than on the exact numbers.
 ## Reports beyond `evaluation.json`
 
 `configs/results/*.toml` (`ResultsManifest`) names the finished runs a report compares
-and the label each is shown under: a `root` (an `s3://` prefix or a folder), then one
+and the label each is shown under: a `root` (an `s3://` prefix or a folder;
+`${ZEPHYR_BUCKET}` in it is the paper's bucket, `zephyr.benchmarks.storage`), then one
 `[[method]]` per method (`run` folder, `kind` `network`/`facemap`/`pixel`, the baseline's
 `variant`, `head = true` for a network with an onset head, and `fold` when its folder is
 not the manifest's `fold`), `[[variant]]`s of the first method and its
@@ -156,7 +157,7 @@ predicts (`network` and `fold` name the run, each `[[application.session]]` its
 `[quality]` names the quality-control scores it compares: a network's `reference` and
 each `[[quality.set]]` of reports (`label`, `reports` folder, `role`: `working`, `null`,
 `application`, or `camera` for the same sessions from another camera, for a noise null of `probe` its `noise` level, and optionally the `camera` its videos are from), all under a
-quality-control root the report sets. `corpus-v3.toml` is the corpus benchmark that `notebooks/walkthrough.py`
+quality-control root the report sets. `corpus-v3.toml` is the corpus benchmark that `notebooks/manuscript_figures.py`
 reports. To report other runs, copy it under a new name.
 
 `analysis.py` measures, clip by clip, what a run's own scores do not: every true inhale

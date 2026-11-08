@@ -35,8 +35,8 @@ def intro():
     Draws each data panel of the manuscript's figures at its printed size, as laid out
     in `{FIGURES / "layout.toml"}`, and writes it as `<figure>/<panel>.svg` beside the
     figure's `.typ` file, which embeds the panels as vectors and adds their letters.
-    Runs come from the results manifest and clips from the local dataset copy, as for
-    `walkthrough.py`; nothing is trained. Set `ZEPHYR_MANUSCRIPT_FIGURES` to write
+    Runs come from the results manifest and clips from the local dataset copy
+    (`ZEPHYR_TEST_ROOT`); nothing is trained. Set `ZEPHYR_MANUSCRIPT_FIGURES` to write
     elsewhere.
     """)
     return
@@ -423,7 +423,7 @@ def fig3_md():
     ## Fig. 3: the benchmark
 
     Every method on test set A (new animals), as each run scored itself, and the
-    walkthrough's clip-by-clip tables (onset lags, rate windows) for the networks.
+    clip-by-clip tables (onset lags, rate windows) for the networks.
     """)
     return
 
@@ -537,7 +537,7 @@ def fig3a(cv_methods, methods):
 
 @app.cell
 def fig3b(by_fold, methods, test_a):
-    # Inference speed, frames per second (walkthrough harness): networks on this machine's GPU,
+    # Inference speed, frames per second (runs.wall_time): networks on this machine's GPU,
     # the pixel methods and Facemap in numpy on its CPU. Inhale F1 on new animals per
     # fold (dots) and its mean over folds with the 95% interval.
     timing = runs.wall_time(methods).set_index("method")

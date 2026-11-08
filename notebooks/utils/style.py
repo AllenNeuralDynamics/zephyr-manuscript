@@ -88,8 +88,6 @@ ONSET: str = "#009e73"
 TRUTH: str = "#000000"
 """The thermistor, wherever it is drawn."""
 
-POOLED: str = "#333333"
-"""A summary over recordings or videos, drawn over their individual lines."""
 
 SERIES_CMAP: str = "tab20"
 """Colour map for many like series (recordings), which have no fixed colour."""
@@ -99,10 +97,6 @@ def series(n: int) -> list[str]:
     """*n* distinct colours for like series, in a fixed order."""
     cmap = mpl.colormaps[SERIES_CMAP]
     return [mpl.colors.to_hex(cmap(i % cmap.N)) for i in range(n)]
-
-
-EMBEDDING_CMAP: str = "RdBu_r"
-"""Colour map of z-scored network features (diverging around 0)."""
 
 
 def use_style() -> None:
@@ -186,15 +180,6 @@ def color(name: str) -> str:
         **SETS,
         "Truth": TRUTH,
     }[name]
-
-
-def mosaic(
-    layout: list[list[str]], width: str = "double", aspect: float = 0.5, **kwargs: Any
-) -> tuple[Figure, dict[str, Any]]:
-    """Like :func:`figure`, for a named layout; returns the axes by name."""
-    w = COLUMN_IN[width]
-    fig = plt.figure(figsize=(w, w * aspect), layout="constrained")
-    return fig, fig.subplot_mosaic(layout, **kwargs)
 
 
 def panel(

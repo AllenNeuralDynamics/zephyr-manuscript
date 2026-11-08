@@ -1,9 +1,9 @@
 # The corpus benchmark: every method trained and scored on Code Ocean on the split of
 # full-gray-sched-v3 (zephyr-compute-sandbox matrices full-gray-sched-v3, benchmarks-v3,
 # transformers-v3, full-gray-sched-v3-geo-blur), seed 17 so far. Read by
-# notebooks/walkthrough.py; a run that has not finished is left out until it has.
+# notebooks/manuscript_figures.py; a run that has not finished is left out until it has.
 # Only Zephyr has an onset head: the comparison networks are as their papers built them.
-root = "s3://aind-scratch-data/vr-foraging/zephyr-runs"
+root = "${ZEPHYR_BUCKET}/zephyr-runs"
 fold = "dev"
 
 [[method]]

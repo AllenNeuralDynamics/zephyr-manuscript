@@ -16,7 +16,7 @@ Each figure is assembled from panels drawn at their printed size.
    `uv run python manuscript_figures.py`, or `uv run marimo edit manuscript_figures.py`).
    It reads the layout, draws each panel with `notebooks/utils/style.py` and writes
    `figN/<panel>.svg`. Runs come from the results manifest and clips from the local
-   dataset copy (`ZEPHYR_TEST_ROOT`), as for the walkthrough.
+   dataset copy (`ZEPHYR_TEST_ROOT`).
 3. Schematics: draw in Inkscape on a page of the panel's size, text in Arial 6–7 pt, and
    save as plain SVG to `figN/<panel>.svg`. Never let the notebook write a schematic's name.
 4. Add the panel to `files` in `figN.typ`, then from `manuscript/`:

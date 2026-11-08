@@ -7,6 +7,9 @@
 # zephyr comes from the zephyr repository, pinned to one commit.
 #   uv sync --all-packages --extra cpu   # or --extra gpu
 
+[tool.zephyr-manuscript]
+bucket = "s3://aind-scratch-data/vr-foraging"
+
 [tool.uv.workspace]
 members = ["packages/*"]
 

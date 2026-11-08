@@ -8,9 +8,18 @@ which finished runs a report compares (``configs/results/``).
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, PositiveInt, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    PositiveInt,
+    field_validator,
+    model_validator,
+)
 
 from zephyr.config import Experiment, Fold, TrainParams
+
+from . import storage
 
 
 class BenchmarkTrainParams(TrainParams):
@@ -162,7 +171,8 @@ class ResultsManifest(BaseModel):
 
     model_config = ConfigDict(extra="forbid", frozen=True)
     root: str
-    """Where the runs were uploaded: an ``s3://`` prefix or a local folder."""
+    """Where the runs were uploaded: an ``s3://`` prefix or a local folder;
+    ``${ZEPHYR_BUCKET}`` in it is the paper's bucket (:mod:`.storage`)."""
     fold: str = "dev"
     method: list[ReportedRun] = Field(min_length=1)
     """The compared methods, in the order tables list them."""
@@ -177,6 +187,11 @@ class ResultsManifest(BaseModel):
     quality: Quality | None = None
     """Quality-control scores of networks that work, known failures and sessions
     without a thermistor."""
+
+    @field_validator("root")
+    @classmethod
+    def _expand_root(cls, value: str) -> str:
+        return storage.expand(value)
 
     @model_validator(mode="after")
     def _labels_are_distinct(self) -> "ResultsManifest":
