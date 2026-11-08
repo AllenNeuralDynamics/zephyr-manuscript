@@ -11,6 +11,7 @@ with app.setup:
     import os
     import platform
     import re
+    import shutil
     import subprocess
     import sys
     import tomllib
@@ -56,13 +57,24 @@ with app.setup:
         f"{local.as_posix()}={mount}" for mount, (_, local) in DATASETS.items()
     )
     fs = s3fs.S3FileSystem()
+    NOTEBOOK = Path(__file__).resolve()
+    ARGS = mo.cli_args()
+    SCRIPT = mo.app_meta().mode == "script"
+    """Run as a script (``python notebooks/checkpoint_analyses.py``), every analysis
+    runs; in the editor, each waits for its button."""
+    FORCE = bool(ARGS.get("force"))
+    """``-- --force``: run again an analysis already made from this commit."""
+    UPLOAD = bool(ARGS.get("upload"))
+    """``-- --upload``: copy the outputs to S3 once made (a script never uploads
+    otherwise)."""
+    STARTED = dt.datetime.now(dt.UTC).timestamp()
 
     def sha256(path: Path) -> str:
         return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
     def get(source: str, local: Path) -> Path:
-        """*source* on S3, downloaded once to *local*."""
-        if not local.is_file():
+        """*source* on S3, downloaded to *local* unless already there at S3's size."""
+        if not local.is_file() or local.stat().st_size != fs.size(source):
             local.parent.mkdir(parents=True, exist_ok=True)
             fs.get(source, str(local))
         return local
@@ -147,6 +159,51 @@ with app.setup:
         )
         return done.stdout.strip()
 
+    def require_clean() -> str:
+        """The commit an analysis runs from: refuses a working tree that differs from
+        it (tracked or untracked files), so every output names the code that made it."""
+        changed = git("status", "--porcelain")
+        if changed:
+            raise SystemExit(
+                "Commit first: the analyses run only from a clean working tree.\n"
+                + changed
+            )
+        return git("rev-parse", "HEAD")
+
+    def made_here(folder: Path) -> bool:
+        """Whether *folder* holds an output made from this commit."""
+        path = folder / "provenance.json"
+        if not path.is_file():
+            return False
+        rec = json.loads(path.read_text())
+        return rec.get("commit") == git("rev-parse", "HEAD") and not rec.get("dirty")
+
+    def should_run(folder: Path, button) -> bool:
+        """Run in the editor when its button is pressed; as a script, unless this
+        commit already made it (``--force`` runs it again)."""
+        if button.value:
+            return True
+        return SCRIPT and (FORCE or not made_here(folder))
+
+    def s3_object(key: str) -> dict:
+        """What S3 says of an input: its key, ETag, version and time."""
+        info = fs.info(key)
+        return {
+            "key": f"s3://{key}",
+            "etag": str(info.get("ETag", "")).strip('"'),
+            "version_id": info.get("VersionId"),
+            "last_modified": str(info.get("LastModified")),
+            "size": info.get("size"),
+        }
+
+    def outputs(folder: Path) -> dict[str, str]:
+        """The SHA-256 of every file of *folder* (but its provenance)."""
+        return {
+            p.relative_to(folder).as_posix(): sha256(p)
+            for p in sorted(folder.rglob("*"))
+            if p.is_file() and p.name != "provenance.json"
+        }
+
     def record(name: str, **analysis) -> dict:
         """``analysis.json`` of *name*: what it ran, on which checkpoint."""
         model = fetch(f"{CHECKPOINT}/best.pt")
@@ -155,21 +212,35 @@ with app.setup:
         (OUT / name / "analysis.json").write_text(json.dumps(out, indent=2))
         return out
 
-    def provenance(folder: Path, started: float, **extra) -> None:
-        """``provenance.json`` of a folder made here: the commit of this repository, the
-        packages, the machine and the time it took."""
+    def provenance(folder: Path | None, started: float, **extra) -> dict:
+        """``provenance.json`` of a folder made here: the commit of this repository
+        (and whether it is on the remote), the notebook and lock file, the pinned
+        packages, the checkpoint as S3 holds it, the machine, the command, the time it
+        took and the SHA-256 of every output."""
         now = dt.datetime.now(dt.UTC).timestamp()
         packages = {}
-        for n in ("zephyr", "zephyr-benchmarks", "torch"):
+        for n in ("zephyr", "zephyr-benchmarks", "torch", "marimo", "numpy"):
             try:
                 packages[n] = {"version": importlib.metadata.version(n)}
             except importlib.metadata.PackageNotFoundError:
                 packages[n] = None
+        pins = tomllib.loads((REPO / "pyproject.toml").read_text())["tool"]["uv"]
+        commit = git("rev-parse", "HEAD")
         rec = {
-            "notebook": "notebooks/checkpoint_analyses.py",
+            "notebook": NOTEBOOK.relative_to(REPO).as_posix(),
+            "notebook_sha256": sha256(NOTEBOOK),
             "repository": git("remote", "get-url", "origin"),
-            "commit": git("rev-parse", "HEAD"),
+            "branch": git("rev-parse", "--abbrev-ref", "HEAD"),
+            "commit": commit,
             "dirty": bool(git("status", "--porcelain")),
+            "commit_on_remote": bool(git("branch", "-r", "--contains", commit)),
+            "uv_lock_sha256": sha256(REPO / "uv.lock"),
+            "zephyr_source": pins["sources"]["zephyr"],
+            "checkpoint": s3_object(f"{RUNS}/{CHECKPOINT}/best.pt")
+            | {"sha256": sha256(fetch(f"{CHECKPOINT}/best.pt"))},
+            "bucket": f"s3://{BUCKET}",
+            "command": sys.argv,
+            "mode": mo.app_meta().mode,
             "started_utc": dt.datetime.fromtimestamp(started, dt.UTC).isoformat(
                 timespec="seconds"
             ),
@@ -185,12 +256,22 @@ with app.setup:
                 "torch": torch.__version__,
                 "cuda": torch.version.cuda,
                 "python": sys.version.split()[0],
+                "os": platform.platform(),
+                "deterministic_algorithms": torch.are_deterministic_algorithms_enabled(),
             },
             "packages": packages,
+            "environment": {
+                k: os.environ[k]
+                for k in ("ZEPHYR_BUCKET", PATH_MAP_ENV)
+                if k in os.environ
+            },
             **extra,
         }
-        folder.mkdir(parents=True, exist_ok=True)
-        (folder / "provenance.json").write_text(json.dumps(rec, indent=2))
+        if folder is not None:  # None: the record alone, written by the caller
+            folder.mkdir(parents=True, exist_ok=True)
+            rec["outputs"] = outputs(folder)
+            (folder / "provenance.json").write_text(json.dumps(rec, indent=2))
+        return rec
 
 
 @app.cell
@@ -210,10 +291,22 @@ def _():
        held-out dynamic-foraging animal of `dynamic-foraging.toml`'s three folds
        (`zephyr-benchmarks evaluate`, group `df_test_a`, as the refined runs score it).
 
-    Each output gets `analysis.json` (the checkpoint and its SHA-256, what ran) and
-    `provenance.json` (this repository's commit, packages, GPU, time). Everything is made
-    in `notebooks/cache/analysis/` first; nothing reaches S3 until **Upload**. Receptive
-    fields and timing stay in `manuscript_figures.py`, which computes them from the runs.
+    Run it whole, from a clean commit, as a script:
+
+    ```
+    uv run --locked --all-packages --extra gpu python notebooks/checkpoint_analyses.py
+    ```
+
+    (add `-- --upload` to copy the outputs to S3, `-- --force` to make them again). An
+    analysis refuses to run from a working tree that differs from its commit, and is
+    not made twice from one commit. Each output gets `analysis.json` (the checkpoint and
+    its SHA-256, what ran) and `provenance.json` (the commit, whether it is on the
+    remote, the notebook and `uv.lock` SHA-256, the pinned zephyr, the checkpoint's S3
+    ETag and SHA-256, packages, GPU, command, time, and the SHA-256 of every output);
+    `notebooks/cache/analysis/provenance.json` gathers them for the whole run. Everything
+    is made in `notebooks/cache/analysis/` first; nothing reaches S3 until **Upload**.
+    Receptive fields and timing stay in `manuscript_figures.py`, which computes them
+    from the runs.
 
     Everything is read from S3, and only what scoring reads: each clip's thermistor and
     timestamps from its dataset (`s3://{BUCKET}/zephyr-dataset`, `zephyr-df-dataset`) and
@@ -248,7 +341,9 @@ def _():
 @app.cell
 def _(model, run_noise):
     noise_dir = OUT / NOISE / "test_a"
-    if run_noise.value:
+    if should_run(noise_dir, run_noise):
+        require_clean()
+        shutil.rmtree(OUT / NOISE, ignore_errors=True)  # nothing of another commit
         _started = dt.datetime.now(dt.UTC).timestamp()
         _groups = test_selection("face.toml", "cv_0", "test_a")["groups"]
         _list = dataset_list("/data/zephyr-dataset")
@@ -277,7 +372,7 @@ def _(model, run_noise):
         probe.load_probes(noise_dir) if any(noise_dir.glob("*.probe.json")) else None
     )
     mo.md("Not run yet.") if noise is None else noise
-    return
+    return (noise_dir,)
 
 
 @app.cell
@@ -298,7 +393,10 @@ def _():
 @app.cell
 def _(model, run_df):
     df_folds = [f["name"] for f in experiment("dynamic-foraging.toml")["fold"]]
-    if run_df.value:
+    df_dirs = [OUT / DF_SCORES / _f / "seed-17" for _f in df_folds]
+    if any(should_run(_d, run_df) for _d in df_dirs):
+        require_clean()
+        shutil.rmtree(OUT / DF_SCORES, ignore_errors=True)  # nothing of another commit
         record(
             DF_SCORES,
             command="zephyr-benchmarks evaluate",
@@ -336,7 +434,7 @@ def _(model, run_df):
                 | {k: v for k, v in _summary.items() if isinstance(v, float)}
             )
     mo.md("Not run yet.") if not _rows else pd.DataFrame(_rows)
-    return
+    return (df_dirs,)
 
 
 @app.cell
@@ -355,13 +453,42 @@ def _():
 
 
 @app.cell
-def _(upload):
-    mo.stop(not upload.value)
+def _(df_dirs, noise_dir):
+    # The notebook's own record: every analysis folder's provenance, gathered with the
+    # run's command, so one file says what this notebook made and from what.
+    _parts = {}
+    for _folder in (noise_dir, *df_dirs):
+        _path = _folder / "provenance.json"
+        if _path.is_file():
+            _parts[_folder.relative_to(OUT).as_posix()] = json.loads(_path.read_text())
+    run_record = None
+    if _parts:
+        run_record = provenance(None, STARTED, analyses=_parts)
+        (OUT / "provenance.json").write_text(json.dumps(run_record, indent=2))
+    _commits = {p.get("commit") for p in _parts.values()}
+    mo.md(
+        "No analysis made yet."
+        if not _parts
+        else f"`{OUT / 'provenance.json'}`: {len(_parts)} outputs, from commit(s) "
+        + ", ".join(f"`{c}`" for c in sorted(c or "?" for c in _commits))
+    )
+    return (run_record,)
+
+
+@app.cell
+def _(run_record, upload):
+    mo.stop(not (upload.value or (SCRIPT and UPLOAD)))
+    mo.stop(run_record is None, mo.md("Nothing to upload yet."))
     _done = []
     for _name in (NOISE, DF_SCORES):
         _local = OUT / _name
         if not (_local / "analysis.json").is_file():
             continue
+        _stale = [
+            p.parent for p in _local.rglob("provenance.json") if not made_here(p.parent)
+        ]
+        if _stale:
+            raise SystemExit(f"Not from this clean commit, not uploaded: {_stale}")
         _dest = f"{RUNS}/analysis/{_name}"
         _mine = json.loads((_local / "analysis.json").read_text())
         if fs.exists(f"{_dest}/analysis.json"):
@@ -374,6 +501,9 @@ def _(upload):
         for _path in _files:
             fs.put_file(str(_path), f"{_dest}/{_path.relative_to(_local).as_posix()}")
         _done.append(f"{len(_files)} files of `{_local}` -> `s3://{_dest}`")
+    _record = f"{RUNS}/analysis/checkpoint_analyses.provenance.json"
+    fs.put_file(str(OUT / "provenance.json"), _record)
+    _done.append(f"`{OUT / 'provenance.json'}` -> `s3://{_record}`")
     mo.md("\n".join(f"- {d}" for d in _done) or "Nothing to upload yet.")
     return
 
