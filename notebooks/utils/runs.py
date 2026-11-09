@@ -897,6 +897,10 @@ def label_added() -> pd.DataFrame:
 # --- inference time --------------------------------------------------------------------------
 
 
+GPU_WARMUP_PASSES = 3
+"""Untimed passes of the warm-up clip a network runs before it is timed."""
+
+
 def wall_time(labels, n_clips: int = 8) -> pd.DataFrame:
     """Inference seconds per clip of each method of *labels* (its run on the first
     fold; :mod:`zephyr.benchmarks.timing`: the same test clips for all, one untimed
@@ -925,6 +929,10 @@ def wall_time(labels, n_clips: int = 8) -> pd.DataFrame:
                 if dev.type == "cuda":
                     torch.cuda.synchronize()
 
+            # GPU clocks and cuDNN's kernel choice settle over a few passes: the
+            # warm-up clip several times before timing's own untimed one.
+            for _ in range(GPU_WARMUP_PASSES):
+                infer(warm)
             if dev.type == "cuda":
                 torch.cuda.reset_peak_memory_stats()
             result = timing.time_method(infer, timed, warm)
