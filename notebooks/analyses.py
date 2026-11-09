@@ -26,7 +26,9 @@ with app.setup:
     from zephyr import features
     from zephyr.benchmarks import analysis, cli, probe
     from zephyr.config import ClipList, ResolvedClip, load
-    from zephyr.quality_control.report import _spread_out
+    from zephyr.quality_control.report import _spread_out as spread_out
+
+    # (renamed: marimo keeps a "_" name to the cell defining it, the setup cell too)
 
     DATA = runs.DATA
     """The local copy of the paper's data (``scripts/sync_data.ps1``, ``ZEPHYR_DATA``);
@@ -401,7 +403,7 @@ def _(checks_done, model, run_noise):
         _groups = test_selection("face.toml", "cv_0", "test_a")["groups"]
         _list = require(MOUNTS["/data/zephyr-dataset"] / "clips.toml")
         _clips, _recipe = probe._selections([_list], _groups)
-        _cache = runs.cache_folder(_spread_out(_clips, 24)[0], _recipe)
+        _cache = runs.cache_folder(spread_out(_clips, 24)[0], _recipe)
         _argv = [
             "--checkpoint",
             str(model),

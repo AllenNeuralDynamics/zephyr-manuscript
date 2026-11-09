@@ -78,8 +78,14 @@ Write-Host "log $log"
 # Windows PowerShell turns each stderr line (warnings, progress) into an error record,
 # which "Stop" would make fatal: judge the run by its exit code instead.
 $ErrorActionPreference = "Continue"
-& uv @cmd 2>&1 | ForEach-Object { "$_" } | Tee-Object -FilePath $log
-$code = $LASTEXITCODE
+# The log in UTF-8 (Windows PowerShell's Tee-Object writes UTF-16), flushed per line.
+$writer = [System.IO.StreamWriter]::new($log, $false, [System.Text.UTF8Encoding]::new($false))
+try {
+    & uv @cmd 2>&1 | ForEach-Object { $line = "$_"; $writer.WriteLine($line); $writer.Flush(); $line }
+    $code = $LASTEXITCODE
+} finally {
+    $writer.Close()
+}
 $ErrorActionPreference = "Stop"
 if ($code -ne 0) { throw "analyses.py failed (exit $code); see $log." }
 Write-Host "Done. Upload with: .\scripts\upload_analyses.ps1 -Source $Out -DryRun"
