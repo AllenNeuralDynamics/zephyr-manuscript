@@ -62,7 +62,7 @@ with app.setup:
     _argv = _argv[_argv.index("--") + 1 :] if "--" in _argv else _argv
     ARGS = _parser.parse_args(_argv if SCRIPT else [])
     FORCE = ARGS.force
-    """``-- --force``: make again an analysis this commit already made."""
+    """``-- --force``: make again an analysis already made."""
     ONLY = {s for s in ARGS.only.split(",") if s}
     """``-- --only tables,errors``: only these analyses (as a script)."""
     SKIP = {s for s in ARGS.skip.split(",") if s}
@@ -147,23 +147,25 @@ with app.setup:
             )
         return git("rev-parse", "HEAD")
 
-    def made_here(name: str) -> bool:
-        """Whether analysis *name* was made from this commit."""
+    def already_made(name: str) -> bool:
+        """Whether analysis *name* was made, to the end, from a clean commit (any: its
+        ``provenance.json`` names which). A folder without one (an analysis that
+        stopped) is made again."""
         path = OUT / name / "provenance.json"
         if not path.is_file():
             return False
         rec = json.loads(path.read_text())
-        return rec.get("commit") == git("rev-parse", "HEAD") and not rec.get("dirty")
+        return bool(rec.get("commit")) and not rec.get("dirty")
 
     def should_run(name: str, button) -> bool:
-        """Run in the editor when its button is pressed; as a script, unless this
-        commit already made it (``--force`` makes it again) or ``--only``/``--skip``
-        leave it out."""
+        """Run in the editor when its button is pressed; as a script, unless it was
+        already made (:func:`already_made`; ``--force`` makes it again) or
+        ``--only``/``--skip`` leave it out."""
         if button.value:
             return True
         if not SCRIPT or (ONLY and name not in ONLY) or name in SKIP:
             return False
-        return FORCE or not made_here(name)
+        return FORCE or not already_made(name)
 
     def begin(name: str) -> tuple[Path, float]:
         """Start analysis *name* from a clean commit, in an empty folder."""
@@ -299,8 +301,10 @@ def _():
     uv run --locked --all-packages --extra gpu python notebooks/analyses.py -- --skip timing
     ```
 
-    Every analysis this commit has not made yet runs (`-- --force`: all of them again;
-    `-- --only tables,errors` or `-- --skip timing` to choose). Time the methods
+    Every analysis not made yet runs: one made from an earlier clean commit is kept
+    (its `provenance.json` names the commit), one that stopped is made again
+    (`-- --force`: all of them again, or with `-- --only quality` just those;
+    `-- --skip timing` to leave some out). Time the methods
     (`timing`) on a quiet machine. In the editor (`marimo edit notebooks/analyses.py`)
     each waits for its button.
     """)

@@ -3,8 +3,9 @@
     Run notebooks/analyses.py headless, from a clean commit, into one output folder.
 
 .DESCRIPTION
-    Runs every analysis the current commit has not made yet (or those -Only names, but
-    those -Skip names) as a script, reading the local copy of the paper's data (-Data,
+    Runs every analysis not made yet (or those -Only names, but those -Skip names) as a
+    script; one made from an earlier clean commit is kept, one that stopped is made
+    again, and -Force makes them again. It runs reading the local copy of the paper's data (-Data,
     from scripts/sync_data.ps1) and writing one folder per analysis into -Out, each with
     its provenance.json. Upload them afterwards with
     scripts/upload_analyses.ps1 -Source <Out>. The output is also logged to
@@ -26,7 +27,7 @@
     Run all but these analyses (e.g. timing).
 
 .PARAMETER Force
-    Make again the analyses this commit already made.
+    Make again the analyses already made (with -Only, just those).
 
 .EXAMPLE
     .\scripts\run_analyses.ps1 -Out D:\data\zephyr-temp-output

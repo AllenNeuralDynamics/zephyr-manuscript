@@ -1479,6 +1479,26 @@ def quality_folders(reports: str) -> list[Path]:
     return found
 
 
+ONE_VIDEO = "video"
+"""What a report folder of one video names it (``application/<session>_<camera>/``
+holds ``video.prediction.parquet``): such a video is named by its folder."""
+
+
+def report_stem(folder: Path, stem: str) -> str:
+    """The name of video *stem* of report *folder*: its own, or, in a folder of one
+    video (:data:`ONE_VIDEO`), the folder's."""
+    return Path(folder).name if stem == ONE_VIDEO else stem
+
+
+def load_folder_reports(folder: Path) -> pd.DataFrame:
+    """The windows of the reports in *folder* (``zephyr.quality_control.load_reports``),
+    each video named by :func:`report_stem`."""
+    from zephyr.quality_control import load_reports
+
+    table = load_reports(folder)[1]
+    return table.assign(stem=[report_stem(folder, s) for s in table["stem"]])
+
+
 def report_truth(folder: Path) -> pd.DataFrame:
     """The real scores of each prediction in *folder* (``zephyr predict
     --quality-control``) over the whole clip and over each window its report measures
@@ -1488,7 +1508,7 @@ def report_truth(folder: Path) -> pd.DataFrame:
 
     parts = []
     for path in sorted(Path(folder).glob(f"*{SUFFIX}")):
-        stem = path.name.removesuffix(SUFFIX)
+        stem = report_stem(folder, path.name.removesuffix(SUFFIX))
         try:
             e = truth_entry(stem)
         except KeyError:
@@ -1502,7 +1522,6 @@ def report_truth(folder: Path) -> pd.DataFrame:
 
 def _quality_windows() -> pd.DataFrame:
     from zephyr.benchmarks.probe import load_probes
-    from zephyr.quality_control import load_reports
     from zephyr.quality_control.reference import Reference
 
     quality = RESULTS.quality
@@ -1520,7 +1539,9 @@ def _quality_windows() -> pd.DataFrame:
             table = pd.concat([load_probes(f, windows=True) for f in folders])
             table = table[table["sigma"] == s.noise].drop(columns="sigma")
         else:
-            table = pd.concat([load_reports(f)[1] for f in folders], ignore_index=True)
+            table = pd.concat(
+                [load_folder_reports(f) for f in folders], ignore_index=True
+            )
             truth_ = pd.concat([report_truth(f) for f in folders], ignore_index=True)
             if len(truth_):
                 windows = truth_[~truth_["whole"]].drop(columns=["whole", "end"])
@@ -1587,8 +1608,9 @@ def quality_traces(label: str, stem: str) -> pd.DataFrame:
 
     reports = next(s.reports for s in RESULTS.quality.set if s.label == label)
     for f in quality_folders(reports):
-        if (f / f"{stem}{SUFFIX}").is_file():
-            return pd.read_parquet(f / f"{stem}{SUFFIX}")
+        for name in (stem, ONE_VIDEO) if f.name == stem else (stem,):
+            if (f / f"{name}{SUFFIX}").is_file():
+                return pd.read_parquet(f / f"{name}{SUFFIX}")
     raise FileNotFoundError(f"{label}: no prediction of {stem}")
 
 
