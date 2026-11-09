@@ -154,7 +154,7 @@ def prediction_panel(
     bottom.plot(tp[kp], prediction["onset"][kp], color=style.ONSET)
     bottom.set_ylim(0, 1.05)
     bottom.set_yticks([0, 1])
-    bottom.set_ylabel("Onset (p)")
+    bottom.set_ylabel("Inhalation onset (p)")
     bottom.set_xlim(t0, t1)
     bottom.set_xlabel("Time (s)")
     return fig
@@ -417,7 +417,7 @@ def task_stretch_panel(
         o.plot(onset["time"], onset["p"], color=style.ONSET, lw=0.6)
         o.set_ylim(0, 1.05)
         o.set_yticks([0, 1])
-        o.set_ylabel("Onset (p)")
+        o.set_ylabel("Inhalation onset (p)")
     for a in traces:
         for site in sites.itertuples():
             a.axvspan(site.odor, site.leave, color=SITE_SHADE, alpha=0.18, lw=0)
@@ -838,7 +838,7 @@ def lag_rate_panel(
     for y in (-TOLERANCE_MS, TOLERANCE_MS):
         a.axhline(y, color="0.4", linewidth=0.6, linestyle=":")
     a.set_xlabel("Respiration rate (Hz)")
-    a.set_ylabel("Onset lag (ms)")
+    a.set_ylabel("Inhalation onset lag (ms)")
     a.grid(False)
     bar = fig.colorbar(image, ax=a, fraction=0.06, pad=0.03, aspect=25)
     bar.set_label("Share of the rate bin")
@@ -1496,7 +1496,7 @@ def failure_panel(
     )
     o.set_ylim(0, 1.05)
     o.set_yticks([0, 1])
-    o.set_ylabel("Onset (p)")
+    o.set_ylabel("Inhalation onset (p)")
     o.set_xlim(t0, t1)
     o.set_xlabel("Time (s)")
     o.xaxis.set_major_locator(ticker.MultipleLocator(0.5))
@@ -2055,7 +2055,7 @@ def window_examples_panel(
         p.set_xlim(e["time"][0], e["time"][-1])
         if i % cols == 0:
             t.set_ylabel("Respiration (z)")
-            p.set_ylabel("Onset (p)")
+            p.set_ylabel("Inhalation onset (p)")
         if i >= n - cols:
             p.set_xlabel("Time in the window (s)" if shots else "Time (s)")
     return fig
