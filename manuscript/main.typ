@@ -219,8 +219,6 @@ The final corpus holds #v("corpus.sessions") sessions with two 300-s clips each
 Respiration from our dataset spanned a wide and representative range for mice: #v("rates.slow")% of cycles were at 2–4 Hz,
 #v("rates.medium")% at 4–8 Hz and #v("rates.fast")% at 8–15 Hz (#fig(<fig:corpus>, "b")).
 
-Finally, to measure how well methods generalize, for all analyses, we held out whole animals, and blocks of sessions of training animals, from training (#link(<sec:methods>)[Methods], @sec:data-splits).
-
 #figure(
   fit(fig1),
   caption: [*Measuring respiration from face video.* The data panels each show one mouse
@@ -236,15 +234,11 @@ Finally, to measure how well methods generalize, for all analyses, we held out w
 
 == Neural networks recover respiration from video
 
-We first asked whether the signals that current tools extract from face video track
-respiration. Motion energy, the mean absolute difference between frames, is the most common
-summary of facial movement @stringer2019 @musall2019. Even with a sign and lag fitted on
-the training clips, it was uncorrelated with the thermistor on new animals
-($r = #v("benchmark.motion_r")$; #fig(<fig:benchmark>, "a,b")\; @tab:benchmark). So were
-two other pixel methods that select the components of the crop with most power in the
-respiration band ($r <= #v("benchmark.pixel_r_max")$ each), and all three poorly detected
-inhalations (F1 #v("benchmark.pixel_f1")). A linear readout of
-the leading facial motion principal components, as in Facemap @syeda2024, only recovered part of the
+Our goal was to infer respiration from conventional videography alone, so that respiration can be measured in animals without an implanted sensor. A useful method must recover both the respiration waveform and the timing of each inhalation, and must keep doing so in animals it was never trained on.
+
+First, we asked whether the signals that current tools extract from face video can be used to track respiration. Motion energy, the mean absolute difference between frames, is the most common summary of facial movement @stringer2019 @musall2019. Even after fitting a sign and lag on the training clips, it could not predict respiration in held-out mice
+($r = #v("benchmark.motion_r")$; #fig(<fig:benchmark>, "a,b")\; @tab:benchmark). A linear readout of
+the leading facial motion principal components, as in Facemap @syeda2024, performed better but still recovered only part of the
 signal ($r = #v("benchmark.facemap_r")$, inhalation F1 #v("benchmark.facemap_f1")).
 
 Deep-learning methods have been shown to recover periodic physiological signals from human video.
@@ -261,6 +255,8 @@ with a temporal convolutional network (TCN) that models respiration over time. A
 aimed to predict inhalation onsets directly, whereas the networks we compare against predict only the
 waveform and require a separate digital signal processing step to extract inhalation onsets
 (#fig(<fig:overview>, "d")\; #link(<sec:methods>)[Methods]).
+
+To measure how well methods generalize, for all analyses, we held out whole animals, and blocks of sessions of training animals, from training (#link(<sec:methods>)[Methods], @sec:data-splits).
 
 We scored each method on held-out animals, never seen in training, in a five-fold
 cross-validation in which each of #v("benchmark.animals_a") animals is held out once
@@ -538,6 +534,8 @@ cameras' exact position, angle and lens still differ (@fig:views), and the netwo
 lower on some rigs and animals than on others (@fig:rigs). The quality-control measures
 score each window of a recording without a sensor and, calibrated against scores of predictions
 known to work and known to fail, allow the user to set their own thresholds.
+
+Adopting Zephyr therefore requires little beyond the videography many head-fixed laboratories already collect. A laboratory first runs the pre-trained network on its own recordings and uses the quality-control measures to check whether the predictions are reliable for its setup. If they are not, the network can be refined with a small amount of ground-truth data from the laboratory's own rig: a few animals recorded with video and a nasal epithelial temperature sensor (2 to 4 animals sufficed in our experiments). Once refined, Zephyr runs efficiently on a consumer-grade GPU, and no sensor is needed in subsequent animals.
 
 The corpus also limits what we can claim. All mice were head-fixed, so the camera saw the
 face from a fixed distance and angle, and the animal could not turn away, rear or groom
