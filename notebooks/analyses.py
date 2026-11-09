@@ -33,9 +33,9 @@ with app.setup:
     MOUNTS = runs.MOUNTS
     RUNS = runs.LOCAL_RUNS
     """Every run, as on S3 (``<bucket>/zephyr-manuscript-runs``)."""
-    OUT = test_sets.CACHE / "analyses"
-    """Each analysis's folder, uploaded by ``scripts/upload_analyses.ps1`` into the runs'
-    ``analysis/<name>/``."""
+    OUT = Path(os.environ.get("ZEPHYR_ANALYSES", test_sets.CACHE / "analyses"))
+    """Each analysis's folder (``ZEPHYR_ANALYSES`` names another, as the figures read
+    it), uploaded by ``scripts/upload_analyses.ps1`` into the runs' ``analysis/<name>/``."""
     # Everything runs.py computes from the data is written here, and read back from here.
     runs.COMPUTE = True
     runs.ANALYSES = OUT
