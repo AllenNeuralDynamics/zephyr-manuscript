@@ -408,10 +408,13 @@ def fig3_folds(methods, with_unit):
 
     def fold_tables(names, kinds=("breaths", "false_positives", "lags", "windows")):
         """The analysis tables of each method on each fold (the tables analysis),
-        labelled by the method and a ``fold`` column."""
+        labelled by the method and a ``fold`` column; a run not finished is left out,
+        as its scores are (``runs.cv_scores``)."""
         out = {k: [] for k in kinds}
         for n in names:
             for f in cv_folds:
+                if runs.evaluation(runs.cv_name(n, f)) is None:
+                    continue
                 t = runs.tables(runs.cv_name(n, f))
                 for k in kinds:
                     out[k].append(t[k].assign(method=n, fold=f))
@@ -1498,61 +1501,66 @@ def fig5a(test_a, with_unit):
     _repeated = _sizes.map(_sizes.value_counts()) > 1
     _draws = _sizes[_repeated & (_sizes < _sizes[_ref])].index
     learning.loc[learning["method"].isin(_draws), "full"] = True
-    # The text's numbers: runs found by what they trained on, not by their labels.
+    # The text's numbers, per condition: a condition is the runs of one size (its
+    # draws), and each number is the mean over them. Runs are found by what they
+    # trained on, not by their labels.
     _f1 = learning[learning["metric"] == "inhale"].set_index("method")
     _r = learning[learning["metric"] == "correlation"].set_index("method")
-    _draw = _f1.index.isin(_draws)
-    _d = _f1[_draw].sort_index()
-    _full = _f1[_f1["full"] & ~_draw].sort_values("animals")
-    _smallest = _full.index[0]  # fewest animals
-    _partial = _f1[~_f1["full"] & ~_draw].index[
-        0
-    ]  # all animals, part of their sessions
-    # The fewest animals against all, paired on the units both were scored on.
-    _pair = _recs[(_recs["set"] == test_a) & _recs["method"].isin([_ref, _smallest])]
+    # fewer animals, all their sessions: one condition per number of animals
+    _sized = _f1[_f1["full"] & (_f1.index != _ref)]
+    _counts = sorted(_sized["animals"].unique())
+    _of = {n: sorted(_sized.index[_sized["animals"] == n]) for n in _counts}
+    _fewest = _of[_counts[0]]  # the draws of the fewest animals
+    _partial = sorted(_f1.index[~_f1["full"]])  # all animals, part of their sessions
+
+    def _mean(table, names, column="mean"):
+        return table.loc[names, column].mean()
+
+    def _listing(xs, show):
+        xs = list(xs)
+        return ", ".join(show(x) for x in xs[:-1]) + " and " + show(xs[-1])
+
+    # The fewest animals against all, paired on the units both were scored on: each
+    # unit's score averaged over the draws.
+    _pair = _recs[(_recs["set"] == test_a) & _recs["method"].isin([_ref, *_fewest])]
+    _pair = _pair.assign(
+        method=_pair["method"].where(_pair["method"] == _ref, "fewest")
+    )
     _shared = set.intersection(
-        *(set(_pair.loc[_pair["method"] == n, "unit"]) for n in (_ref, _smallest))
+        *(set(_pair.loc[_pair["method"] == n, "unit"]) for n in (_ref, "fewest"))
     )
     _diff = (
         analysis.bootstrap(
             _pair[_pair["unit"].isin(_shared)], "inhale", reference=_ref, unit="unit"
         )
         .set_index("method")
-        .loc[_smallest]
+        .loc["fewest"]
     )
-    _nested = _full[_full.index != _ref]
     v_size = {
-        "animals": ", ".join(values.count(n) for n in _nested["animals"].iloc[:-1])
-        + " and "
-        + values.count(_nested["animals"].iloc[-1]),
-        "sessions": ", ".join(values.count(n) for n in _nested["sessions"].iloc[:-1])
-        + " and "
-        + values.count(_nested["sessions"].iloc[-1]),
+        "animals": _listing(_counts, values.count),
+        "sessions": _listing(
+            (round(_mean(_f1, _of[n], "sessions")) for n in _counts), values.count
+        ),
         "all_animals": values.count(_f1.loc[_ref, "animals"]),
         "all_sessions": values.count(_f1.loc[_ref, "sessions"]),
-        "nested_f1": ", ".join(
-            values.num(x) for x in _f1.loc[_nested.index, "mean"].iloc[:-1]
-        )
-        + " and "
-        + values.num(_f1.loc[_nested.index[-1], "mean"]),
-        "fewest": values.count(_f1.loc[_smallest, "animals"]),
-        "fewest_f1": values.num(_f1.loc[_smallest, "mean"]),
-        "fewest_r": values.num(_r.loc[_smallest, "mean"]),
+        "nested_f1": _listing((_mean(_f1, _of[n]) for n in _counts), values.num),
+        "fewest": values.count(_counts[0]),
+        "fewest_f1": values.num(_mean(_f1, _fewest)),
+        "fewest_r": values.num(_mean(_r, _fewest)),
         "f1": values.num(_f1.loc[_ref, "mean"]),
         "r": values.num(_r.loc[_ref, "mean"]),
         "diff": values.num(_diff[f"{_ref} minus"]),
         "diff_ci": values.span(_diff["diff low"], _diff["diff high"]),
-        "partial_sessions": values.count(_f1.loc[_partial, "sessions"]),
-        "partial_f1": values.num(_f1.loc[_partial, "mean"]),
-        "partial_r": values.num(_r.loc[_partial, "mean"]),
-        "draw_sessions": values.span(_d["sessions"].min(), _d["sessions"].max(), 0),
-        "draws_f1": ", ".join(values.num(x) for x in _d["mean"].iloc[:-1])
-        + " and "
-        + values.num(_d["mean"].iloc[-1]),
-        "draws_r": ", ".join(values.num(x) for x in _r.loc[_d.index, "mean"].iloc[:-1])
-        + " and "
-        + values.num(_r.loc[_d.index[-1], "mean"]),
-        "draw_animals": values.count(_d["animals"].iloc[0]),
+        "partial_sessions": values.count(round(_mean(_f1, _partial, "sessions"))),
+        "partial_f1": values.num(_mean(_f1, _partial)),
+        "partial_r": values.num(_mean(_r, _partial)),
+        "draw_sessions": values.span(
+            _f1.loc[_fewest, "sessions"].min(), _f1.loc[_fewest, "sessions"].max(), 0
+        ),
+        "draws_f1": _listing(_f1.loc[_fewest, "mean"], values.num),
+        "draws_r": _listing(_r.loc[_fewest, "mean"], values.num),
+        "draw_animals": values.count(_counts[0]),
+        "draws": values.count(len(_fewest)),
         "fold": _ref.split(" | ")[-1],
         "units": values.count(_f1.loc[_ref, "units"]),
     }
@@ -1622,7 +1630,9 @@ def fig4df(test_a):
     _shown = []
     for _panel, _row in _cases.items():
         _stem = _row.name
-        _errors = runs.set_errors(_one, test_a).query("stem == @_stem")
+        # not .query("stem == @_stem"): marimo renames a cell's "_" names
+        _errors = runs.set_errors(_one, test_a)
+        _errors = _errors[_errors["stem"] == _stem]
         _p = runs.prediction(_one, _stem)
         _origin = float(_p["times"][0])
         _truth = runs.truth(_stem)
