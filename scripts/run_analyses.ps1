@@ -1,0 +1,79 @@
+<#
+.SYNOPSIS
+    Run notebooks/analyses.py headless, from a clean commit, into one output folder.
+
+.DESCRIPTION
+    Runs every analysis the current commit has not made yet (or those -Only names, but
+    those -Skip names) as a script, reading the local copy of the paper's data (-Data,
+    from scripts/sync_data.ps1) and writing one folder per analysis into -Out, each with
+    its provenance.json. Upload them afterwards with
+    scripts/upload_analyses.ps1 -Source <Out>. The output is also logged to
+    <Out>\analyses-<time>.log.
+
+    Refuses to start if the working tree differs from the commit (tracked or untracked
+    files), as every analysis would.
+
+.PARAMETER Out
+    Where the analyses are written (ZEPHYR_ANALYSES). Default notebooks/cache/analyses.
+
+.PARAMETER Data
+    The local copy of the data and runs (ZEPHYR_DATA). Default D:\zephyr-data.
+
+.PARAMETER Only
+    Run only these analyses (e.g. checks,tables).
+
+.PARAMETER Skip
+    Run all but these analyses (e.g. timing).
+
+.PARAMETER Force
+    Make again the analyses this commit already made.
+
+.EXAMPLE
+    .\scripts\run_analyses.ps1 -Out D:\data\zephyr-temp-output
+    .\scripts\run_analyses.ps1 -Out D:\data\zephyr-temp-output -Skip timing
+    .\scripts\run_analyses.ps1 -Out D:\data\zephyr-temp-output -Only tables -Force
+#>
+param(
+    [string]$Out = (Join-Path $PSScriptRoot "..\notebooks\cache\analyses"),
+    [string]$Data = "D:\zephyr-data",
+    [string[]]$Only = @(),
+    [string[]]$Skip = @(),
+    [switch]$Force
+)
+$ErrorActionPreference = "Stop"
+
+$repo = Resolve-Path (Join-Path $PSScriptRoot "..")
+Set-Location $repo
+
+if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
+    $env:PATH = "$env:USERPROFILE\.local\bin;$env:PATH"
+    if (-not (Get-Command uv -ErrorAction SilentlyContinue)) { throw "uv is not on PATH." }
+}
+if (-not (Test-Path (Join-Path $Data "sync.json"))) {
+    throw "No data copy at ${Data}: run scripts/sync_data.ps1 first (or pass -Data)."
+}
+$changed = git status --porcelain
+if ($changed) { throw "Commit first: the analyses run only from a clean working tree.`n$($changed -join "`n")" }
+
+New-Item -ItemType Directory -Force $Out | Out-Null
+$Out = (Resolve-Path $Out).Path
+$env:ZEPHYR_DATA = $Data
+$env:ZEPHYR_ANALYSES = $Out
+$env:PYTHONUNBUFFERED = "1"
+
+$cmd = @("run", "--locked", "--all-packages", "--extra", "gpu", "python", "notebooks/analyses.py")
+$extra = @()
+if ($Only) { $extra += @("--only", ($Only -join ",")) }
+if ($Skip) { $extra += @("--skip", ($Skip -join ",")) }
+if ($Force) { $extra += "--force" }
+if ($extra) { $cmd += @("--") + $extra }
+
+$log = Join-Path $Out ("analyses-{0:yyyyMMdd-HHmmss}.log" -f (Get-Date))
+Write-Host "commit $(git rev-parse --short HEAD)  data $Data  ->  $Out"
+Write-Host "uv $($cmd -join ' ')"
+Write-Host "log $log"
+
+& uv @cmd 2>&1 | ForEach-Object { "$_" } | Tee-Object -FilePath $log
+$code = $LASTEXITCODE
+if ($code -ne 0) { throw "analyses.py failed (exit $code); see $log." }
+Write-Host "Done. Upload with: .\scripts\upload_analyses.ps1 -Source $Out -DryRun"
