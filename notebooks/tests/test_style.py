@@ -1,3 +1,5 @@
+import re
+
 import matplotlib
 
 matplotlib.use("Agg")
@@ -15,7 +17,9 @@ def test_every_entity_has_a_colour() -> None:
 
 def test_every_compared_method_has_its_own_colour() -> None:
     assert set(runs.METHODS) == set(style.METHODS)
-    assert set(runs.VARIANTS) | set(runs.CV_VARIANTS) == set(style.VARIANTS)
+    # a variant run per left-out animal ("<label> (<animal>)") is pooled under <label>
+    pooled = {re.sub(r" \([^)]*\)$", "", v) for v in runs.VARIANTS}
+    assert pooled | set(runs.CV_VARIANTS) <= set(style.VARIANTS)
     assert len(set(style.METHODS.values())) == len(style.METHODS)
 
 

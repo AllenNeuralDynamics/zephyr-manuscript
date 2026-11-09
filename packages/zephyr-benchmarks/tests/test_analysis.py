@@ -520,7 +520,18 @@ class ManifestTests(unittest.TestCase):
         self.assertTrue(paths)
         for path in paths:
             with self.subTest(path=path.name):
-                self.assertTrue(load(ResultsManifest, path).method)
+                manifest = load(ResultsManifest, path)
+                self.assertTrue(manifest.method or manifest.cross_validation)
+
+    def test_a_manifest_may_compare_over_folds_only(self):
+        run = {"label": "Zephyr", "run": "face"}
+        manifest = ResultsManifest(
+            root="s3://bucket/runs",
+            cross_validation={"folds": ["cv_0"], "method": [run]},
+        )
+        self.assertEqual(manifest.method, [])
+        with self.assertRaises(ValueError):
+            ResultsManifest(root="s3://bucket/runs")
 
     def test_quality_sets_take_a_role_and_distinct_labels(self):
         base = {"root": "r", "method": [{"label": "Zephyr", "run": "x"}]}

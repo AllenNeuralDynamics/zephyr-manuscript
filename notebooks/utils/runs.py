@@ -1,12 +1,16 @@
-"""The benchmark's runs, a local copy of their test clips, and what is computed from them.
+"""The paper's runs, and what is computed from them and the data.
 
 Which runs are compared, and under which labels, is a results manifest of
-``zephyr-benchmarks`` (``configs/results/``, :data:`MANIFEST`). What the notebook needs
-of a run (its checkpoint and scores) is downloaded once into ``cache/runs/``
-(the bucket is public: read unsigned, no credentials); traces on the test clips are
-the runs' own ``traces/`` where saved, else predicted here (inference only), and the tables of :mod:`zephyr.benchmarks.analysis` built from them,
-each cached the first time. The clips come from a local copy of the dataset and its
-feature cache (:mod:`.test_sets`).
+``zephyr-benchmarks`` (``configs/results/``, :data:`MANIFEST`). Everything is read from
+one local copy of the paper's data and runs (:data:`DATA`, ``scripts/sync_data.ps1``);
+nothing is downloaded.
+
+Two notebooks use this module. ``analyses.py`` sets :data:`COMPUTE`: whatever needs the
+data (the clips' truth, frames and videos, the GPU) is computed, and written into
+:data:`ANALYSES` (one folder per analysis, uploaded into the runs' ``analysis/``).
+``manuscript_figures.py`` leaves it off: the same functions read what the analyses
+wrote, and a missing output is an error, never computed there. Every score is a run's
+own ``evaluation.json``, as Code Ocean scored it.
 """
 
 import functools
@@ -23,55 +27,48 @@ import pandas as pd
 import torch
 
 from zephyr import features
-from zephyr.benchmarks import analysis, baselines, common, storage, timing
+from zephyr.benchmarks import CONFIGS, analysis, baselines, common, timing
 from zephyr.benchmarks.config import ReportedRun, ResultsManifest
 from zephyr.benchmarks.runner import load_checkpoint
-from zephyr.config import ClipList, TrainParams, load
+from zephyr.config import PATH_MAP_ENV, ClipList, load
 from zephyr.evaluate import (
     HEAD_THRESHOLD,
     TRACES,
     aggregate_recordings,
-    choose_head_threshold,
     head_event_indices,
-    head_inhale_counts,
-    trace_name,
 )
 from zephyr.infer import predict_clip
 
-from . import test_sets
-from .test_sets import CACHE
+from . import picks
 
 REPO = Path(__file__).resolve().parents[2]
 MANIFEST_ENV = "ZEPHYR_RESULTS"
 MANIFEST = Path(
     os.environ.get(
         MANIFEST_ENV,
-        REPO / "packages/zephyr-benchmarks/configs/results/corpus-v3.toml",
+        REPO / "packages/zephyr-benchmarks/configs/results/manuscript.toml",
     )
 )
 """The results manifest the notebook reports, unless ``ZEPHYR_RESULTS`` names another."""
 RESULTS: ResultsManifest = load(ResultsManifest, MANIFEST)
 S3_RUNS = RESULTS.root.rstrip("/")
 """Where the manifest's runs were uploaded."""
-LOCAL_RUNS = CACHE / "runs"
-PREDICTIONS = CACHE / "walkthrough"
-HEAD_ENV = "ZEPHYR_HEAD_THRESHOLD"
-HEAD_MODE = os.environ.get(HEAD_ENV, "validation")
-"""``validation`` (the default, what the manuscript reports): each run's onset threshold
-is chosen on its own validation clips (:func:`head_threshold`), as training now does;
-any other value (e.g. ``default``) keeps the scorer's 0.5."""
-DERIVED = PREDICTIONS / "head-validation" if HEAD_MODE == "validation" else PREDICTIONS
-"""Where the scores, tables and errors of a run whose onset threshold was chosen on
-validation are cached, apart from those at the scorer's (:func:`_derived`)."""
-DEFAULT_ROOT = Path("D:/zephyr-local-v2")
-"""The local copy of the dataset and its cache, unless ``ZEPHYR_TEST_ROOT`` names one."""
-METHODS: dict[str, ReportedRun] = {r.label: r for r in RESULTS.method}
-"""Every compared method, in the order tables list them."""
-VARIANTS: dict[str, ReportedRun] = {r.label: r for r in RESULTS.variant}
-"""The first method trained differently, compared with it alone."""
-LEARNING_CURVE: dict[str, ReportedRun] = {r.label: r for r in RESULTS.learning_curve}
-"""The first method trained on parts of its training set."""
-ALL = METHODS | VARIANTS | LEARNING_CURVE
+DATA = Path(os.environ.get("ZEPHYR_DATA", "D:/zephyr-data"))
+"""The local copy of the paper's data and runs (``scripts/sync_data.ps1``): the only
+place anything is read from."""
+LOCAL_RUNS = DATA / "zephyr-manuscript-runs"
+"""The runs, in the copy (as on S3, the manifest's ``root``)."""
+ANALYSES = Path(os.environ.get("ZEPHYR_ANALYSES", LOCAL_RUNS / "analysis"))
+"""Where the analyses are read from (and, with :data:`COMPUTE`, written to): the runs'
+``analysis/`` once uploaded and synced; ``ZEPHYR_ANALYSES`` names another folder (e.g.
+``notebooks/cache/analyses`` before uploading). A run folder ``analysis/<name>`` of the
+manifest is read from here too."""
+COMPUTE = False
+"""Whether an analysis output that is missing is computed from the data (and written),
+as ``analyses.py`` does, or is an error, as in the figures."""
+MANUSCRIPT = CONFIGS / "manuscript"
+"""The capsule's configs the runs were made from (experiments and clip lists)."""
+CV = RESULTS.cross_validation
 
 
 def cv_name(label: str, fold: str) -> str:
@@ -79,29 +76,50 @@ def cv_name(label: str, fold: str) -> str:
     return f"{label} | {fold}"
 
 
-CV_VARIANTS: dict[str, ReportedRun] = (
-    {r.label: r for r in RESULTS.cross_validation.variant}
-    if RESULTS.cross_validation is not None
+METHODS: dict[str, ReportedRun] = {r.label: r for r in RESULTS.method} or (
+    {r.label: r.model_copy(update={"fold": CV.folds[0]}) for r in CV.method}
+    if CV is not None
     else {}
+)
+"""Every compared method, in the order tables list them: on the manifest's one split,
+or, without one, each cross-validation method on its first fold (what one run of each
+shows: its inference time, its settings)."""
+VARIANTS: dict[str, ReportedRun] = {r.label: r for r in RESULTS.variant}
+"""The first method trained differently, compared with it alone."""
+LEARNING_CURVE: dict[str, ReportedRun] = {r.label: r for r in RESULTS.learning_curve}
+"""The first method trained on parts of its training set."""
+ALL = METHODS | VARIANTS | LEARNING_CURVE
+CV_VARIANTS: dict[str, ReportedRun] = (
+    {r.label: r for r in CV.variant} if CV is not None else {}
 )
 """The first method trained differently on each cross-validation fold."""
 CV_RUNS: dict[str, ReportedRun] = (
     {
         cv_name(m.label, f): m.model_copy(update={"fold": f})
-        for f in RESULTS.cross_validation.folds
-        for m in (*RESULTS.cross_validation.method, *CV_VARIANTS.values())
+        for f in CV.folds
+        for m in (*CV.method, *CV_VARIANTS.values())
     }
-    if RESULTS.cross_validation is not None
+    if CV is not None
     else {}
 )
 """Each cross-validation method and variant on each fold (:func:`cv_name`)."""
 RUNS = ALL | CV_RUNS
 """Every run by name: :data:`ALL` and :data:`CV_RUNS`."""
-REFERENCE = RESULTS.method[0].label
+REFERENCE = next(iter(METHODS))
 """The method every other is compared with (Zephyr)."""
-SINGLE = cv_name(REFERENCE, RESULTS.cross_validation.folds[0])
+SINGLE = cv_name(REFERENCE, CV.folds[0])
 """The trained network the single-network analyses use (example clips, error cases):
 the reference on the first cross-validation fold."""
+
+
+def pooled(label: str) -> list[str]:
+    """The runs *label* names: itself, or each run labelled ``<label> (<part>)`` (one
+    per left-out animal, say), to be pooled."""
+    return [
+        n
+        for n in RUNS
+        if n == label or (n.startswith(f"{label} (") and n.endswith(")"))
+    ]
 
 
 def url(m: ReportedRun) -> str:
@@ -112,49 +130,136 @@ PIXEL_BIN = 2
 """The pixel methods' spatial binning, as the benchmark ran them."""
 
 
-def root() -> Path:
-    """The local dataset copy, named as the original so its cache entries are found."""
-    path = Path(os.environ.get(test_sets.ROOT_ENV, DEFAULT_ROOT))
-    test_sets.use_copy(path)
+MOUNTS = {
+    "/data/zephyr-dataset": DATA / "zephyr-dataset",
+    "/data/zephyr-df-dataset": DATA / "zephyr-df-dataset",
+}
+"""Where the capsule mounts each dataset (its clip lists and cache keys name it), and
+its folder in the copy, named as the mount so the cache keys are the capsule's."""
+OPEN_DATA = DATA / "aind-open-data"
+"""The sessions without a thermistor and the processed assets, in the copy (the capsule
+mounts each at ``/data/<name>``)."""
+os.environ[PATH_MAP_ENV] = ";".join(
+    f"{local.as_posix()}={mount}" for mount, local in MOUNTS.items()
+)
+
+
+def local_path(path: str) -> str:
+    """A path of the capsule's clip lists (under a ``/data`` mount), in the copy."""
+    for mount, local in MOUNTS.items():
+        if path.startswith(mount + "/"):
+            return (local / path[len(mount) + 1 :]).as_posix()
+    if path.startswith("/data/"):
+        return (OPEN_DATA / path.removeprefix("/data/")).as_posix()
     return path
 
 
-@functools.cache
-def _s3():
-    import fsspec
+def manuscript_clips(name: str, groups: Iterable[str] | None = None) -> ClipList:
+    """A clip list of the capsule's configs (``clips/<name>``), cut to *groups*, its
+    paths in the copy."""
+    raw = tomllib.loads((MANUSCRIPT / "clips" / name).read_text())
+    wanted = None if groups is None else set(groups)
+    clips_ = [
+        c
+        | {
+            k: local_path(c[k])
+            for k in ("video", "timestamps", "thermistor")
+            if isinstance(c.get(k), str)
+        }
+        for c in raw["clip"]
+        if wanted is None or c["group"] in wanted
+    ]
+    return ClipList.model_validate({**raw, "clip": clips_})
 
-    if S3_RUNS.startswith("s3://"):
-        return fsspec.filesystem("s3", anon=True)  # read only, and the bucket is public
-    return fsspec.filesystem("file")
+
+def dataset_dir() -> Path:
+    """The corpus, in the copy."""
+    return MOUNTS["/data/zephyr-dataset"]
+
+
+def cache_dir() -> Path:
+    """The feature caches the runs were trained and scored on, in the copy."""
+    return DATA / "zephyr-cache"
+
+
+RECIPE = "features-360x270-box96x96-60hz"
+"""The face camera's feature cache: the corpus's clips at their own recipe."""
+
+
+def cache_folder(clip, recipe) -> Path:
+    """The copy's folder of *clip*'s cache entry, as the capsule names it: the
+    recipe's, with the camera when it is not the face's."""
+    params = recipe.for_clip(clip)
+    w, h = params.target_size
+    bw, bh = clip.box[2:]
+    name = f"features-{w}x{h}-box{bw}x{bh}-{params.select_fs:g}hz"
+    camera = re.split(r"_span\d+_", clip.source.stem)[-1]
+    return cache_dir() / (name if camera == "FaceCamera" else f"{name}-{camera}")
+
+
+def _require(path: Path) -> Path:
+    if not path.exists():
+        raise FileNotFoundError(
+            f"{path} is not in the local copy {DATA}: run scripts/sync_data.ps1"
+        )
+    return path
+
+
+# --- the analyses' outputs -------------------------------------------------------------
+
+
+def made(name: str, path: str) -> Path:
+    """File *path* of analysis *name*. Missing, it is an error unless :data:`COMPUTE`
+    (then the caller makes it)."""
+    out = ANALYSES / name / path
+    if not COMPUTE and not out.exists():
+        raise FileNotFoundError(
+            f"{out} is missing: notebooks/analyses.py makes it (analysis {name!r});"
+            " upload it with scripts/upload_analyses.ps1 and sync the runs, or set"
+            " ZEPHYR_ANALYSES to the folder it was written to"
+        )
+    return out
+
+
+def _memo(name: str, path: str, make: Callable, read: Callable, write: Callable):
+    """What analysis *name* wrote at *path*, or, with :data:`COMPUTE`, *make* it and
+    write it there."""
+    out = made(name, path)
+    if out.exists():
+        return read(out)
+    found = make()
+    out.parent.mkdir(parents=True, exist_ok=True)
+    write(found, out)
+    return found
+
+
+def _frame_memo(name: str, path: str, make: Callable[[], pd.DataFrame]) -> pd.DataFrame:
+    return _memo(name, path, make, pd.read_parquet, lambda df, p: df.to_parquet(p))
+
+
+def _arrays_memo(name: str, path: str, make: Callable[[], dict]) -> dict:
+    def read(p):
+        with np.load(p, allow_pickle=False) as f:
+            return {k: f[k] for k in f.files}
+
+    return _memo(name, path, make, read, lambda d, p: np.savez(p, **d))
+
+
+# --- the runs ------------------------------------------------------------------------
+
+
+def _runs_path(key: str) -> Path:
+    """``<run>/<path>`` in the runs' copy; a run of the analyses
+    (``analysis/<name>/...``) in :data:`ANALYSES`."""
+    if key.startswith("analysis/"):
+        return ANALYSES / key.removeprefix("analysis/")
+    return LOCAL_RUNS / key
 
 
 def _fetch(key: str) -> Path | None:
-    """``<run>/<path>`` from the runs' root into :data:`LOCAL_RUNS`, once; ``None`` if
-    absent (the run has not finished)."""
-    local = LOCAL_RUNS / key
-    if local.exists():
-        return local
-    remote = f"{S3_RUNS.removeprefix('s3://')}/{key}"
-    if not _s3().exists(remote):
-        return None
-    local.parent.mkdir(parents=True, exist_ok=True)
-    part = local.with_name(local.name + ".part")
-    _s3().get(remote, str(part), recursive=_s3().isdir(remote))
-    part.replace(local)
-    return local
-
-
-def dataset_file(name: str, url: str) -> Path:
-    """A file of the dataset (*url*: its root, the spec's ``root``): the local copy's
-    when it has one, else downloaded once into ``cache/dataset/``."""
-    local = root() / "dataset" / name
-    if local.is_file():
-        return local
-    cached = CACHE / "dataset" / name
-    if not cached.is_file():
-        cached.parent.mkdir(parents=True, exist_ok=True)
-        _s3().get(f"{url.removeprefix('s3://').rstrip('/')}/{name}", str(cached))
-    return cached
+    """``<run>/<path>`` in the runs' copy; ``None`` if absent (not finished)."""
+    path = _runs_path(key)
+    return path if path.exists() else None
 
 
 def folder(m: ReportedRun) -> str:
@@ -166,16 +271,9 @@ def folder(m: ReportedRun) -> str:
 def seeds(folder: str) -> tuple[str, ...]:
     """The seed folders a network run has finished (a ``best.pt`` and its scores), in
     its *folder* (``<run>/<fold>``, :func:`folder`)."""
-    local = sorted(
-        p.parent.name for p in LOCAL_RUNS.glob(f"{folder}/*/evaluation.json")
+    return tuple(
+        sorted(p.parent.name for p in _runs_path(folder).glob("*/evaluation.json"))
     )
-    try:
-        found = _s3().glob(
-            f"{S3_RUNS.removeprefix('s3://')}/{folder}/seed-*/evaluation.json"
-        )
-    except Exception:  # noqa: BLE001 -- offline: whatever was downloaded before
-        return tuple(local)
-    return tuple(sorted({Path(p).parent.name for p in found} | set(local)))
 
 
 def evaluation(name: str, seed: str | None = None) -> dict | None:
@@ -184,6 +282,7 @@ def evaluation(name: str, seed: str | None = None) -> dict | None:
     return _evaluation(RUNS[name], seed)
 
 
+@functools.cache
 def _evaluation(m: ReportedRun, seed: str | None = None) -> dict | None:
     if m.kind == "network":
         found = seeds(folder(m))
@@ -196,16 +295,21 @@ def _evaluation(m: ReportedRun, seed: str | None = None) -> dict | None:
     return json.loads(path.read_text()) if path else None
 
 
+def run_file(name: str, path: str) -> Path:
+    """File *path* of network run *name*'s first seed (``config.json``, ``best.pt``)."""
+    m = RUNS[name]
+    return _require(_runs_path(f"{folder(m)}/{seeds(folder(m))[0]}/{path}"))
+
+
 def training(name: str) -> pd.DataFrame:
     """The sessions a network run trained on (its first seed's ``train_videos.json``),
     with their ``subject`` and ``rig`` from the split."""
-    m = RUNS[name]
-    path = _fetch(f"{folder(m)}/{seeds(folder(m))[0]}/train_videos.json")
-    stems = [Path(v).stem for v in json.loads(path.read_text())]
+    stems = [
+        Path(v).stem
+        for v in json.loads(run_file(name, "train_videos.json").read_text())
+    ]
     sessions = sorted({stem.rsplit("_span", 1)[0] for stem in stems})
-    folds = pd.read_parquet(root() / "dataset" / "raw" / "folds.parquet").set_index(
-        "session_id"
-    )
+    folds = pd.read_parquet(dataset_raw("folds.parquet")).set_index("session_id")
     return pd.DataFrame(
         {
             "session": sessions,
@@ -220,17 +324,70 @@ def available(names) -> list[str]:
     return [n for n in names if evaluation(n) is not None]
 
 
-# --- scores, re-scored here by zephyr's scorer -----------------------------------------
+# --- the corpus's own tables -----------------------------------------------------------
+
+CORPUS_FILES = (
+    "cameras.parquet",
+    "clips.parquet",
+    "folds.parquet",
+    "inventory.parquet",
+    "qc.parquet",
+    "selection.json",
+    "sync.parquet",
+)
+"""The corpus's small ``raw/`` tables the figures read (copied by the ``corpus``
+analysis)."""
+
+
+def corpus_root() -> Path:
+    """The folder whose ``raw/`` holds the corpus's tables (:data:`CORPUS_FILES`): the
+    copy's corpus when computing, else the ``corpus`` analysis."""
+    if COMPUTE:
+        return dataset_dir()
+    made("corpus", "raw/folds.parquet")
+    return ANALYSES / "corpus"
+
+
+def dataset_raw(name: str) -> Path:
+    """One of the corpus's tables (:data:`CORPUS_FILES`)."""
+    return _require(corpus_root() / "raw" / name)
+
+
+# --- scores, the runs' own -------------------------------------------------------------
 
 
 def _subjects() -> dict[str, str]:
-    folds = pd.read_parquet(root() / "dataset" / "raw" / "folds.parquet")
+    folds = pd.read_parquet(dataset_raw("folds.parquet"))
     return dict(zip(folds["session_id"], folds["subject_id"], strict=True))
+
+
+SCORES = (
+    "correlation",
+    "inhale_f1",
+    "exhale_f1",
+    "kl_ibi",
+    "head_inhale_f1",
+)
+"""The per-clip scores of a run's ``evaluation.json``."""
+
+
+def own_scores(name: str) -> pd.DataFrame:
+    """Per-clip scores of run *name* on its test clips (``test_a``-``c``), as its own
+    ``evaluation.json`` gives them (``analyses.py`` checks a sample against scoring them
+    again)."""
+    keys = ("clip_id", "recording", "group", *SCORES)
+    return pd.DataFrame(
+        [
+            {k: c[k] for k in keys if k in c}
+            for c in evaluation(name)["clips"]
+            if c["group"] in SETS
+        ]
+    )
 
 
 def scores(names=ALL, level: str = "clips") -> pd.DataFrame:
     """Per-clip (``clips``) or per-recording (``per_recording``) scores of every
-    finished method in *names* on its test clips (:func:`rescored`); one ``inhale``
+    finished method in *names* on its test clips (:func:`own_scores`); one ``inhale``
     column holds the F1 each method reports (the head's if it has one)."""
     return _scores([(name, name) for name in names], level)
 
@@ -239,77 +396,23 @@ def cv_scores(level: str = "per_recording", variants: bool = False) -> pd.DataFr
     """:func:`scores` of every cross-validation method (or, with *variants*, every
     variant) on every fold of the manifest's ``[cross_validation]``, with a ``fold``
     column; the ``set`` is the fold's own."""
-    cv = RESULTS.cross_validation
-    if cv is None:
+    if CV is None:
         return pd.DataFrame()
     frames = [
         _scores([(m.label, cv_name(m.label, f))], level).assign(fold=f)
-        for f in cv.folds
-        for m in (cv.variant if variants else cv.method)
+        for f in CV.folds
+        for m in (CV.variant if variants else CV.method)
     ]
     frames = [f for f in frames if not f.empty]
     return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
 
 
-def _derived(name: str) -> Path:
-    """Where run *name*'s scores and tables are cached: :data:`DERIVED` when its onset
-    threshold is not the scorer's, else with every other run's."""
-    return DERIVED if head_threshold(name) != HEAD_THRESHOLD else PREDICTIONS
-
-
 def _tag(name: str) -> str:
-    """What run *name*'s cached files are named by: its run, fold and variant (never
+    """What run *name*'s analysis files are named by: its run, fold and variant (never
     its label, which a manifest may point at another run)."""
     m = RUNS[name]
     tag = f"{m.run}-{m.fold or RESULTS.fold}-{m.variant.replace('/', '-') or 'net'}"
     return re.sub(r"[^A-Za-z0-9_.-]+", "_", tag).strip("_")
-
-
-def _scores_path(name: str, folder: Path | None = None) -> Path:
-    return (folder or _derived(name)) / f"scores-{_tag(name)}.parquet"
-
-
-def rescored(name: str) -> pd.DataFrame:
-    """Per-clip scores of run *name* on the test clips its ``evaluation.json`` lists
-    (its ``clip_id``, ``recording`` and ``group``), scored again from the cached
-    predictions by zephyr's scorer (:func:`zephyr.benchmarks.analysis.score_prediction`),
-    so that every run is scored by the current rule whenever it was trained; cached. At
-    another onset threshold than the scorer's, the scores made at it are kept and only
-    the head's inhale F1 is scored again (:func:`zephyr.evaluate.head_inhale_counts`)."""
-    path = _scores_path(name)
-    if path.is_file():
-        return pd.read_parquet(path)
-    base = _scores_path(name, PREDICTIONS)
-    if path != base and base.is_file():
-        out = pd.read_parquet(base)
-        threshold = head_threshold(name)
-        f1 = []
-        for clip_id in out["clip_id"]:
-            stem = clip_id.split("/")[-1]
-            p = prediction(name, stem)
-            f1.append(
-                head_inhale_counts(
-                    truth_entry(stem), p["times"], p["onset"], threshold
-                )["f1"]
-            )
-        out["head_inhale_f1"] = f1
-        path.parent.mkdir(parents=True, exist_ok=True)
-        out.to_parquet(path)
-        return out
-    rows = []
-    for c in evaluation(name)["clips"]:
-        if c["group"] not in SETS:
-            continue
-        stem = c["clip_id"].split("/")[-1]
-        score = analysis.score_prediction(
-            truth_entry(stem), prediction(name, stem), RUNS[name].head
-        )
-        keys = {k: c[k] for k in ("clip_id", "recording", "group")}
-        rows.append(keys | score)
-    out = pd.DataFrame(rows)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    out.to_parquet(path)
-    return out
 
 
 def _level(clips: pd.DataFrame, level: str) -> pd.DataFrame:
@@ -334,7 +437,9 @@ def _scores(named: list[tuple[str, str]], level: str) -> pd.DataFrame:
             continue
         m = RUNS[name]
         seed = seeds(folder(m))[0] if m.kind == "network" else "—"
-        df = _level(rescored(name), level).assign(method=label, seed=seed, head=m.head)
+        df = _level(own_scores(name), level).assign(
+            method=label, seed=seed, head=m.head
+        )
         frames.append(df)
     if not frames:
         return pd.DataFrame()
@@ -359,35 +464,54 @@ METRICS = {
 }
 
 
-# --- the test clips and predictions on them -------------------------------------------
-
-
 @functools.cache
-def clips() -> dict[str, tuple]:
-    """Clip stem -> ``(resolved clip, recipe)`` over the test lists of :func:`root`."""
-    return test_sets._clips(root())
+def head_threshold(name: str) -> float:
+    """The onset threshold run *name* was scored at: its checkpoint's own, chosen in
+    training on its validation clips, as its ``evaluation.json`` records it (the
+    scorer's for a run without a head)."""
+    if not RUNS[name].head:
+        return HEAD_THRESHOLD
+    own = (evaluation(name) or {}).get("head_threshold") or {}
+    if own.get("value") is None:
+        raise ValueError(f"{name}: its evaluation.json records no onset threshold")
+    return float(own["value"])
+
+
+def test_clips(name: str) -> dict[str, str]:
+    """Clip stem -> test set of the clips run *name* was scored on, as its own
+    ``evaluation.json`` lists them."""
+    return {
+        c["clip_id"].split("/")[-1]: SETS[c["group"]]
+        for c in evaluation(name)["clips"]
+        if c["group"] in SETS
+    }
+
+
+# --- the clips (computing only) ----------------------------------------------------------
 
 
 @functools.cache
 def _listed() -> dict[str, tuple]:
-    """Clip stem -> ``(resolved clip, recipe)`` over the dataset copy's clip list."""
-    clip_list = load(ClipList, root() / "dataset" / "clips.toml", check_files=False)
+    """Clip stem -> ``(resolved clip, recipe)`` over the corpus copy's clip list."""
+    clip_list = load(ClipList, dataset_dir() / "clips.toml", check_files=False)
     return {c.source.stem: (c, clip_list.preprocess) for c in clip_list.resolve()}
 
 
 def clip(stem: str) -> tuple:
-    """``(resolved clip, recipe)`` of any clip of the dataset copy."""
-    return clips().get(stem) or _listed()[stem]
+    """``(resolved clip, recipe)`` of any clip of the corpus copy."""
+    return _listed()[stem]
 
 
 @functools.cache
-def clip_sets() -> dict[str, str]:
-    """Clip stem -> the test set whose list holds it."""
+def _all_entries() -> dict[str, features.ClipEntry]:
+    """Every clip of the corpus copy with a cache entry, train and validation too."""
+    clip_list = load(ClipList, dataset_dir() / "clips.toml", check_files=False)
+    cache = cache_dir() / RECIPE
     out = {}
-    for path in sorted((root() / "dataset").glob("full_test_*.toml")):
-        clip_list = load(ClipList, path, check_files=False)
-        name = SETS["test_" + path.stem[-1]]
-        out |= {c.source.stem: name for c in clip_list.resolve()}
+    for c in clip_list.resolve():
+        found = features.lookup(c, clip_list.preprocess, cache)
+        if found is not None:
+            out[c.source.stem] = found
     return out
 
 
@@ -398,37 +522,153 @@ def _span(stem: str) -> str:
 
 @functools.cache
 def _spans() -> dict[str, str]:
-    """Recording span -> the stem of the dataset copy's clip of it."""
+    """Recording span -> the stem of the corpus copy's clip of it."""
     return {_span(s): s for s in _all_entries()}
 
 
 def is_local(stem: str) -> bool:
-    """Whether the dataset copy holds clip *stem* itself (its frames, not only its span)."""
-    return stem in clips() or stem in _all_entries()
+    """Whether clip *stem* itself (its frames, not only its span) is at hand: in the
+    corpus copy when computing, else among the clips the ``truth`` analysis kept."""
+    if COMPUTE:
+        return stem in _all_entries()
+    return (ANALYSES / "truth" / f"{stem}.npz").is_file()
+
+
+def entry(stem: str) -> features.ClipEntry:
+    """The cache entry of any clip of the corpus copy."""
+    found = _all_entries().get(stem)
+    if found is None:
+        raise FileNotFoundError(
+            f"no cache entry for {stem} under {cache_dir() / RECIPE}"
+        )
+    return found
 
 
 def truth_entry(stem: str) -> features.ClipEntry:
     """The entry that holds clip *stem*'s truth: its own, or, for a clip of another
     camera than the copy's, the copy's clip of the same recording span (the same
-    thermistor, events and clock; never its frames)."""
-    if is_local(stem):
+    thermistor, events and clock; never its frames); a dynamic-foraging clip's own."""
+    if stem in _all_entries():
         return entry(stem)
     local = _spans().get(_span(stem))
-    if local is None:
-        raise KeyError(f"no clip of {_span(stem)} in the dataset copy")
-    return entry(local)
+    if local is not None:
+        return entry(local)
+    if stem in df_entries():
+        return df_entries()[stem][0]
+    raise KeyError(f"no clip of {_span(stem)} in the copy")
 
 
-def entry(stem: str) -> features.ClipEntry:
-    """The cache entry of any clip: a test clip of the published split, else any clip of
-    the dataset copy (the cross-validation folds test others)."""
-    if stem not in clips():
-        return _all_entries()[stem]
-    clip, recipe = clips()[stem]
-    found = features.lookup(clip, recipe, root() / "cache" / test_sets.RECIPE)
-    if found is None:
-        raise FileNotFoundError(f"no cache entry for {stem} under {root()}")
-    return found
+TRUTH = ("times", "signal", "inhale", "exhale", "excluded")
+"""What the figures need of :func:`zephyr.benchmarks.analysis.truth`."""
+
+
+def truth(stem: str) -> dict:
+    """:func:`zephyr.benchmarks.analysis.truth` of a clip (computing), or the part of
+    it the ``truth`` analysis kept (:data:`TRUTH`)."""
+    if COMPUTE:
+        return analysis.truth(truth_entry(stem))
+    with np.load(made("truth", f"{stem}.npz")) as f:
+        return {k: f[k] for k in TRUTH}
+
+
+def _kept(stem: str, key: str):
+    with np.load(made("truth", f"{stem}.npz")) as f:
+        return f[key]
+
+
+def grid(stem: str) -> np.ndarray:
+    """The clip's output grid (s), which predictions are put on."""
+    if COMPUTE:
+        return np.load(truth_entry(stem).times)
+    return _kept(stem, "grid")
+
+
+def _session_camera(stem: str) -> tuple[str, str]:
+    session, camera = re.split(r"_span\d+_", stem)
+    return session, camera
+
+
+def _thumbnail_path(stem: str) -> Path:
+    session, camera = _session_camera(stem)
+    name = f"{session}_{camera}.png"
+    if not COMPUTE:
+        return made("truth", f"thumbnails/{name}")
+    for root in (dataset_dir(), MOUNTS["/data/zephyr-df-dataset"]):
+        if (root / "thumbnails" / name).is_file():
+            return root / "thumbnails" / name
+    raise FileNotFoundError(f"no thumbnail {name} in the copy")
+
+
+def thumbnail(stem: str) -> np.ndarray:
+    """The session's whole first frame from the clip's camera."""
+    from PIL import Image
+
+    return np.asarray(Image.open(_thumbnail_path(stem)).convert("L"))
+
+
+def box(stem: str) -> tuple[float, float, float, float]:
+    """The clip's crop box in the pixels of its :func:`thumbnail` (the clip list's box
+    is in the frame the recipe resizes to, ``target_size``)."""
+    if not COMPUTE:
+        return tuple(float(v) for v in _kept(stem, "box"))
+    if stem in df_entries():
+        found, width = df_entries()[stem][1], df_recipe().target_size[0]
+    else:
+        clip_, recipe = clip(stem)
+        found, width = clip_.box, recipe.target_size[0]
+    scale = thumbnail(stem).shape[1] / width
+    return tuple(v * scale for v in found)
+
+
+def gray(stem: str) -> tuple[np.ndarray, np.ndarray]:
+    """``(frame_times, frames)``: the clip's gray crops, memory-mapped ``(T, 1, H, W)``
+    (computing only)."""
+    e = truth_entry(stem)
+    return np.load(e.frame_times), np.load(e.frames, mmap_mode="r")
+
+
+def inhale_frames(stem: str) -> list[np.ndarray]:
+    """Three consecutive gray crops of the clip at its middle inhale (Fig. 1d)."""
+    if not COMPUTE:
+        return list(_kept(stem, "frames"))
+    frame_t, frames = gray(stem)
+    inhale = truth(stem)["inhale"]
+    i = int(np.searchsorted(frame_t, inhale[len(inhale) // 2]))
+    return [np.asarray(frames[j, 0]) for j in (i - 1, i, i + 1)]
+
+
+def output_fs(stem: str) -> float:
+    """The rate (Hz) of the clip's output grid."""
+    if not COMPUTE:
+        return float(_kept(stem, "output_fs"))
+    if stem in df_entries():
+        return float(df_recipe().output_fs)
+    return float(clip(stem)[1].output_fs)
+
+
+def keep_truth(stem: str) -> None:
+    """Write what the figures need of clip *stem* into the ``truth`` analysis: its
+    truth (:data:`TRUTH`), output grid, crop box (on its thumbnail), three crops at its
+    middle inhale and output rate; and the session's thumbnail from its camera."""
+    import shutil
+
+    t = truth(stem)
+    out = ANALYSES / "truth"
+    (out / "thumbnails").mkdir(parents=True, exist_ok=True)
+    np.savez(
+        out / f"{stem}.npz",
+        **{k: np.asarray(t[k]) for k in TRUTH},
+        grid=grid(stem),
+        box=np.asarray(box(stem), float),
+        frames=np.stack(inhale_frames(stem)),
+        output_fs=output_fs(stem),
+    )
+    source = _thumbnail_path(stem)
+    if not (out / "thumbnails" / source.name).is_file():
+        shutil.copy2(source, out / "thumbnails" / source.name)
+
+
+# --- predictions: the runs' saved traces ---------------------------------------------------
 
 
 def device() -> torch.device:
@@ -444,9 +684,7 @@ def _amp(dev: torch.device) -> torch.dtype | None:
 @functools.cache
 def network(name: str) -> tuple:
     """``(model, mean, std, window, frame_chunk)`` of a network's first seed."""
-    m = RUNS[name]
-    path = _fetch(f"{folder(m)}/{seeds(folder(m))[0]}/best.pt")
-    model, mean, std, state = load_checkpoint(path, device())
+    model, mean, std, state = load_checkpoint(run_file(name, "best.pt"), device())
     params = state.get("params") or {}
     return (
         model,
@@ -457,67 +695,47 @@ def network(name: str) -> tuple:
     )
 
 
-def _saved(
-    name: str, e: features.ClipEntry, stem: str | None = None
-) -> tuple[np.ndarray, np.ndarray | None] | None:
-    """``(trace, onset)`` as the run saved it when it scored *e* (a network's
-    ``traces/``, the baselines' ``traces/``), downloaded; ``None`` if it saved none.
-    A network's trace of clip *stem* (another camera's clip of *e*'s span) is put on
-    *e*'s output grid by its own times."""
+@functools.cache
+def _trace_files(traces: str, suffix: str = ".parquet") -> dict[str, str]:
+    """Clip stem -> trace file name in a run's *traces* folder (its
+    ``feat-<stem>-<key><suffix>``), listed once."""
+    return {
+        p.name.removeprefix("feat-").removesuffix(suffix).rsplit("-", 1)[0]: p.name
+        for p in _runs_path(traces).glob(f"feat-*{suffix}")
+    }
+
+
+def _traces(name: str) -> tuple[str, str]:
+    """Run *name*'s ``traces/`` folder and the suffix of its files."""
     m = RUNS[name]
     if m.kind == "network":
-        traces = f"{folder(m)}/{seeds(folder(m))[0]}/{TRACES}"
-        # The clip's own trace first: a run that scored several cameras of a span (one
-        # network on all of them) saved one per camera, and *e* is the copy's clip of
-        # the span, another camera's.
-        path = (
-            _fetch(f"{traces}/{_trace_files(traces)[stem]}")
-            if stem is not None and stem in _trace_files(traces)
-            else None
-        )
-        if path is None:
-            path = _fetch(f"{traces}/{trace_name(e)}")
-        if path is None and Path(e.stem).name.rsplit("-", 1)[0] in _trace_files(traces):
-            # a run on another recipe (e.g. select_fs) names its traces by its own entry
-            path = _fetch(
-                f"{traces}/{_trace_files(traces)[Path(e.stem).name.rsplit('-', 1)[0]]}"
-            )
-        if path is None:
-            return None
-        s = pd.read_parquet(path)
-        signal = s["signal"].to_numpy()
-        onset = s["onset"].to_numpy() if "onset" in s else None
-        times = np.load(e.times)
-        if "time" in s and not np.array_equal(s["time"].to_numpy(), times[: len(s)]):
-            at = s["time"].to_numpy()
-            signal = np.interp(times, at, signal)
-            onset = None if onset is None else np.interp(times, at, onset)
-        return signal, onset
+        return f"{folder(m)}/{seeds(folder(m))[0]}/{TRACES}", ".parquet"
     if m.kind == "facemap":
-        path = _fetch(
-            f"{folder(m)}/facemap/{m.variant}/traces/{baselines.trace_key(e)}.npy"
-        )
-        return None if path is None else (np.load(path), None)
-    method = m.variant.split("/")[0]
-    path = _fetch(f"{folder(m)}/pixel/{method}/traces/{baselines.trace_key(e)}.npy")
-    return None if path is None else (_calibrated(name, np.load(path)), None)
+        return f"{folder(m)}/facemap/{m.variant}/traces", ".npy"
+    return f"{folder(m)}/pixel/{m.variant.split('/')[0]}/traces", ".npy"
 
 
-@functools.cache
-def _trace_files(traces: str) -> dict[str, str]:
-    """Clip stem -> trace file name in a network run's *traces* folder (its
-    ``feat-<stem>-<key>.parquet``), listed once."""
-    try:
-        names = [
-            Path(p).name for p in _s3().ls(f"{S3_RUNS.removeprefix('s3://')}/{traces}")
-        ]
-    except FileNotFoundError:
-        names = [p.name for p in (LOCAL_RUNS / traces).glob("feat-*.parquet")]
-    return {
-        n.removeprefix("feat-").removesuffix(".parquet").rsplit("-", 1)[0]: n
-        for n in names
-        if n.startswith("feat-") and n.endswith(".parquet")
-    }
+def _saved(
+    name: str, stem: str, times: np.ndarray
+) -> tuple[np.ndarray, np.ndarray | None] | None:
+    """``(trace, onset)`` as run *name* saved it when it scored clip *stem* (its
+    ``traces/``), on the clip's output grid *times*; ``None`` if it saved none."""
+    traces, suffix = _traces(name)
+    found = _trace_files(traces, suffix).get(stem)
+    if found is None:
+        return None
+    path = _runs_path(f"{traces}/{found}")
+    if suffix == ".npy":
+        raw = np.load(path)
+        return (raw if RUNS[name].kind == "facemap" else _calibrated(name, raw)), None
+    s = pd.read_parquet(path)
+    signal = s["signal"].to_numpy()
+    onset = s["onset"].to_numpy() if "onset" in s else None
+    if "time" in s and not np.array_equal(s["time"].to_numpy(), times[: len(s)]):
+        at = s["time"].to_numpy()
+        signal = np.interp(times, at, signal)
+        onset = None if onset is None else np.interp(times, at, onset)
+    return signal, onset
 
 
 def _calibrated(name: str, raw: np.ndarray) -> np.ndarray:
@@ -532,14 +750,12 @@ def _calibrated(name: str, raw: np.ndarray) -> np.ndarray:
 def _predicted(
     name: str, e: features.ClipEntry
 ) -> tuple[np.ndarray, np.ndarray | None]:
-    """``(trace, onset)`` predicted here, for a run that saved no traces."""
+    """``(trace, onset)`` predicted here (what :func:`wall_time` times)."""
     m = RUNS[name]
     if m.kind == "pixel":
         method = m.variant.split("/")[0]
         raw = baselines.pixel_trace(method, e, common.FS, PIXEL_BIN)
         return _calibrated(name, common.to_output_grid(e, raw)), None
-    if m.kind != "network":
-        raise FileNotFoundError(f"{name}: no saved trace for {e.stem.name}")
     model, mean, std, window, chunk = network(name)
     dev = device()
     return predict_clip(
@@ -555,200 +771,157 @@ def _predicted(
 
 
 def prediction(name: str, stem: str) -> dict:
-    """Method *name*'s trace on clip *stem* (z-scored, on the clip's 60 Hz grid), its
-    onset probability (zeros without a head) and the target. The trace the run saved
-    is read from its download (:func:`_fetch`), never copied; only a trace predicted
-    here, for a run that saved none, is cached (``cache/walkthrough/``), and a saved
-    one always wins over it. A clip of another camera than the copy's has only the
-    run's saved trace (on the grid of the copy's clip of its span); it is never
-    predicted here, from frames of another camera."""
-    e = truth_entry(stem)
-    m = RUNS[name]
-    path = _prediction_path(name, stem)
-    found = _saved(name, e, stem)
-    if found is None and not is_local(stem):
-        raise FileNotFoundError(f"{name}: no saved trace for {stem}")
-    if found is None and path.is_file():
-        with np.load(path) as p:
-            out = {k: p[k] for k in p.files}
-    else:
-        signal, onset = found if found is not None else _predicted(name, e)
-        times = np.load(e.times)
-        n = min(len(times), len(signal))
-        signal = signal[:n].astype(np.float32)
-        signal = (signal - signal.mean()) / (signal.std() or 1.0)
-        onset = (
-            np.zeros(n, np.float32) if onset is None else onset[:n].astype(np.float32)
-        )
-        out = {"signal": signal, "onset": onset, "times": times[:n]}
-        if found is None:
-            path.parent.mkdir(parents=True, exist_ok=True)
-            part = path.with_suffix(".tmp.npz")
-            np.savez(part, **out)
-            part.replace(path)
-        elif path.is_file():
-            path.unlink()  # a local prediction the run's own trace replaces
-    if m.head:
+    """Run *name*'s trace on clip *stem* as it saved it (z-scored, on the clip's output
+    grid), its onset probability (zeros without a head) and, with a head, its inhales at
+    the run's own onset threshold."""
+    times = grid(stem)
+    found = _saved(name, stem, times)
+    if found is None:
+        raise FileNotFoundError(f"{name}: the run saved no trace of {stem}")
+    signal, onset = found
+    n = min(len(times), len(signal))
+    signal = signal[:n].astype(np.float32)
+    signal = (signal - signal.mean()) / (signal.std() or 1.0)
+    onset = np.zeros(n, np.float32) if onset is None else onset[:n].astype(np.float32)
+    out = {"signal": signal, "onset": onset, "times": times[:n]}
+    if RUNS[name].head:
         out["threshold"] = head_threshold(name)
         peaks = head_event_indices(out["onset"], out["times"], out["threshold"])
         out["head"] = out["times"][peaks]
     return out
 
 
-def _run_dir(m: ReportedRun) -> str:
-    return f"{folder(m)}/{seeds(folder(m))[0]}"
+# --- the analysis tables, per run -------------------------------------------------------------
 
 
-def _validation_recipe_is_local(name: str) -> bool:
-    """Whether run *name* read its validation clips with the local copy's recipe, and
-    the copy holds those clips (not another camera's), so they can be predicted from
-    its feature cache."""
-    run = _run_dir(RUNS[name])
-    config = json.loads(_fetch(f"{run}/config.json").read_text())
-    theirs = config.get("val_clip_list", {}).get("preprocess", {})
-    ours = load(
-        ClipList, root() / "dataset" / "clips.toml", check_files=False
-    ).preprocess
-    ours = json.loads(ours.model_dump_json())
-    if not theirs or any(ours.get(k) != v for k, v in theirs.items() if k in ours):
-        return False
-    clips_ = json.loads(_fetch(f"{run}/best_per_clip.json").read_text())
-    return all(is_local(c["clip_id"].split("/")[-1]) for c in clips_)
+def tables(
+    name: str, progress: Callable[[Iterable], Iterable] = iter
+) -> dict[str, pd.DataFrame]:
+    """:func:`zephyr.benchmarks.analysis.clip_tables` of one run over every test clip,
+    labelled by method, clip and set (the ``tables`` analysis). *progress* wraps the
+    loop over clips (e.g. a progress bar)."""
+    paths = {k: made("tables", f"{_tag(name)}-{k}.parquet") for k in analysis.TABLES}
+    if all(p.is_file() for p in paths.values()):
+        return {k: pd.read_parquet(p) for k, p in paths.items()}
+    parts: dict[str, list] = {k: [] for k in analysis.TABLES}
+    sets = test_clips(name)
+    for stem in progress(list(sets)):
+        label = {"method": name, "stem": stem, "set": sets[stem]}
+        found = analysis.clip_tables(
+            prediction(name, stem), truth(stem), RUNS[name].head
+        )
+        for k, v in found.items():
+            parts[k].append(v.assign(**label))
+    out = {k: pd.concat(v, ignore_index=True) for k, v in parts.items()}
+    for k, v in out.items():
+        paths[k].parent.mkdir(parents=True, exist_ok=True)
+        v.to_parquet(paths[k])
+    return out
 
 
-def validation_prediction(name: str, stem: str) -> dict:
-    """Run *name*'s trace and onset probability on one of its validation clips,
-    predicted here (inference only) and cached."""
-    m = RUNS[name]
-    path = PREDICTIONS / "validation" / m.run / (m.fold or "published") / f"{stem}.npz"
-    if not path.is_file():
-        e = entry(stem)
-        signal, onset = _predicted(name, e)
-        times = np.load(e.times)
-        n = min(len(times), len(signal))
-        path.parent.mkdir(parents=True, exist_ok=True)
-        part = path.with_suffix(".tmp.npz")
-        np.savez(part, times=times[:n], signal=signal[:n], onset=onset[:n])
-        part.replace(path)
-    with np.load(path) as p:
-        return {k: p[k] for k in p.files}
+def errors(name: str, stem: str) -> pd.DataFrame:
+    """:func:`zephyr.benchmarks.analysis.errors` of one method on one test clip
+    (computing only: it reads the clip's frames)."""
+    frame_t, frames = gray(stem)
+    found = analysis.errors(
+        prediction(name, stem), truth(stem), RUNS[name].head, frame_t, frames
+    )
+    return found.assign(stem=stem, method=name)
 
 
-def head_thresholds() -> dict[str, dict]:
-    """Every onset threshold chosen so far (:func:`head_threshold`), by run
-    (:func:`_tag`)."""
-    path = DERIVED / "head-thresholds.json"
-    return json.loads(path.read_text()) if path.is_file() else {}
+def set_errors(name: str, set_name: str) -> pd.DataFrame:
+    """:func:`errors` of every clip of one test set (``SETS`` value), the ``errors``
+    analysis."""
+
+    def make() -> pd.DataFrame:
+        stems = sorted(s for s, v in test_clips(name).items() if v == set_name)
+        return pd.concat([errors(name, s) for s in stems], ignore_index=True)
+
+    return _frame_memo("errors", f"{_tag(name)}-{set_name.split(':')[0]}.parquet", make)
 
 
-@functools.cache
-def head_threshold(name: str) -> float:
-    """The onset threshold of run *name*: the scorer's, unless :data:`HEAD_MODE` is
-    ``validation``, then the one training would have chosen on the run's own
-    validation clips (:func:`zephyr.evaluate.choose_head_threshold` over
-    :data:`zephyr.benchmarks.analysis.HEAD_THRESHOLDS`); cached with its sweep. A
-    checkpoint that holds its own (chosen in training, as its ``evaluation.json``
-    records) keeps it; a run whose validation clips used another recipe than the local
-    copy keeps the scorer's, and says so."""
-    if HEAD_MODE != "validation" or not RUNS[name].head:
-        return HEAD_THRESHOLD
-    chosen = head_thresholds()
-    key = _tag(name)
-    if key not in chosen:
-        own = ((evaluation(name) or {}).get("head_threshold")) or {}
-        if own.get("source") == "checkpoint":
-            chosen[key] = {
-                "value": own["value"],
-                "chosen_on": "training",
-                "rule": "the checkpoint's own, chosen in training on its validation clips",
-            }
-        elif not _validation_recipe_is_local(name):
-            chosen[key] = {
-                "value": HEAD_THRESHOLD,
-                "chosen_on": None,
-                "rule": "the default: its validation clips are not in the dataset copy",
-            }
-        else:
-            run = _run_dir(RUNS[name])
-            clips = json.loads(_fetch(f"{run}/best_per_clip.json").read_text())
-            stems = [c["clip_id"].split("/")[-1] for c in clips]
-            on_val = []
-            for s in stems:
-                p = validation_prediction(name, s)
-                on_val.append((entry(s), p["times"], p["onset"]))
-            chosen[key] = choose_head_threshold(
-                on_val, analysis.HEAD_THRESHOLDS, TrainParams().head_threshold_f1_tie
-            )
-        DERIVED.mkdir(parents=True, exist_ok=True)
-        (DERIVED / "head-thresholds.json").write_text(json.dumps(chosen, indent=1))
-    return float(chosen[key]["value"])
+def animal_breath_rates() -> dict[str, np.ndarray]:
+    """Every thermistor breath's rate (Hz) per animal, over the clips of every session
+    the corpus assigns to a set, from each clip's cached events (``breath-rates``)."""
+
+    def make() -> pd.DataFrame:
+        folds = pd.read_parquet(dataset_raw("folds.parquet"))
+        used = folds[folds["set"].notna()]
+        subject = dict(
+            zip(used["session_id"], used["subject_id"].astype(str), strict=True)
+        )
+        parts = []
+        for stem, e in _all_entries().items():
+            animal = subject.get(stem.rsplit("_span", 1)[0])
+            if animal is not None:
+                rate = 1.0 / np.diff(np.load(e.events)["onset_times"])
+                parts.append(pd.DataFrame({"animal": animal, "rate_hz": rate}))
+        return pd.concat(parts, ignore_index=True)
+
+    rates = _frame_memo("breath-rates", "rates.parquet", make)
+    return {a: g["rate_hz"].to_numpy() for a, g in rates.groupby("animal", sort=True)}
 
 
-def _prediction_path(name: str, stem: str) -> Path:
-    m = RUNS[name]
-    kind = m.variant.replace("/", "-") or "net"
-    return PREDICTIONS / m.run / m.fold / kind / f"{stem}.npz"
+PROMINENCE = (0.1, 0.05)
+"""The lowered prominence fractions of :func:`label_added` (the corpus's is 0.2)."""
 
 
-def truth(stem: str) -> dict:
-    """:func:`zephyr.benchmarks.analysis.truth` of a test clip."""
-    return analysis.truth(truth_entry(stem))
+def label_added() -> pd.DataFrame:
+    """Inhalations the corpus detector adds, per breath of its labels, when its
+    prominence fraction is lowered to each of :data:`PROMINENCE`, on the raw thermistor
+    of every new-animal clip of the reference over the folds (the ``prominence``
+    analysis; ``setting`` is the fraction as printed, ``fold`` the clip's)."""
+
+    def make() -> pd.DataFrame:
+        clips_ = (
+            cv_scores("clips")
+            .query("method == @REFERENCE and set == @SETS['test_a']")
+            .drop_duplicates("stem")
+        )
+        parts = []
+        for stem, fold in zip(clips_["stem"], clips_["fold"], strict=True):
+            if not is_local(stem):
+                continue
+            t = truth(stem)
+            for frac in PROMINENCE:
+                parts.append(
+                    analysis.added_inhales(
+                        t["inhale"], analysis.redetect(t, prominence_frac=frac)
+                    ).assign(fold=fold, setting=f"{frac:g}")
+                )
+        return pd.concat(parts, ignore_index=True)
+
+    return _frame_memo("prominence", "added.parquet", make)
 
 
-def gray(stem: str) -> tuple[np.ndarray, np.ndarray]:
-    """``(frame_times, frames)``: the clip's gray crops, memory-mapped ``(T, 1, H, W)``."""
-    e = entry(stem)
-    return np.load(e.frame_times), np.load(e.frames, mmap_mode="r")
+# --- inference time --------------------------------------------------------------------------
 
 
-def thumbnail(stem: str) -> np.ndarray | None:
-    """The session's whole first frame, if the dataset copy has its thumbnail."""
-    from PIL import Image
-
-    session = stem.rsplit("_span", 1)[0]
-    path = root() / "dataset" / "thumbnails" / f"{session}_FaceCamera.png"
-    return np.asarray(Image.open(path).convert("L")) if path.is_file() else None
-
-
-def box(stem: str) -> tuple[float, float, float, float]:
-    """The clip's crop box in the pixels of its :func:`thumbnail` (the clip list's box
-    is in the frame the recipe resizes to, ``target_size``)."""
-    clip_, recipe = clip(stem)
-    image = thumbnail(stem)
-    scale = 1.0 if image is None else image.shape[1] / recipe.target_size[0]
-    return tuple(v * scale for v in clip_.box)
-
-
-# --- wall time ------------------------------------------------------------------------
-
-
-def timed() -> set[str]:
-    """The methods :func:`wall_time` has timed already."""
-    path = PREDICTIONS / "timing.json"
-    return set(json.loads(path.read_text())) if path.is_file() else set()
-
-
-def wall_time(names, n_clips: int = 8) -> pd.DataFrame:
-    """Inference seconds per clip of each method (:mod:`zephyr.benchmarks.timing`: the
-    same clips for all, one untimed warm-up clip, files read into the OS cache first).
-    Networks on the GPU at each one's own inference window; pixel and Facemap on the
-    CPU. Cached in ``cache/walkthrough/timing.json``; delete it to time again."""
-    path = PREDICTIONS / "timing.json"
+def wall_time(labels, n_clips: int = 8) -> pd.DataFrame:
+    """Inference seconds per clip of each method of *labels* (its run on the first
+    fold; :mod:`zephyr.benchmarks.timing`: the same test clips for all, one untimed
+    warm-up clip, files read into the OS cache first). Networks on the GPU at each one's
+    own inference window; pixel and Facemap on the CPU. The ``timing`` analysis."""
+    path = made("timing", "timing.json")
     done = json.loads(path.read_text()) if path.is_file() else {}
-    entries = [entry(s) for s in clips()]
-    timed = timing.pick_clips(entries, n_clips)
-    warm = timing.pick_warmup(entries, timed)
-    timing.warm_file_cache([*timed, warm])
-    for name in names:
-        if name in done:
-            continue
+    todo = [n for n in labels if n not in done]
+    if todo and not COMPUTE:
+        raise FileNotFoundError(f"{path} has not timed {todo}: run analyses.py")
+    if todo:
+        stems = [s for s in sorted(test_clips(SINGLE)) if is_local(s)]
+        entries = [entry(s) for s in stems]
+        timed = timing.pick_clips(entries, n_clips)
+        warm = timing.pick_warmup(entries, timed)
+        timing.warm_file_cache([*timed, warm])
+    for label in todo:
+        name = label if label in RUNS else cv_name(label, CV.folds[0])
         m = RUNS[name]
         if m.kind == "network":
             model = network(name)[0]
             dev = device()
 
             def infer(e, name=name, dev=dev):
-                _predicted(name, e)  # timed: always inference, never a download
+                _predicted(name, e)  # timed: always inference
                 if dev.type == "cuda":
                     torch.cuda.synchronize()
 
@@ -768,11 +941,10 @@ def wall_time(names, n_clips: int = 8) -> pd.DataFrame:
             result["device"] = "cpu (numpy)"
         else:
             fitted = evaluation(name)
-            bases = _fetch(f"{folder(m)}/facemap/bases.npz")
             result = timing.time_method(
                 timing.facemap_method(
                     m.variant,
-                    bases,
+                    _require(_runs_path(f"{folder(m)}/facemap/bases.npz")),
                     n_components=fitted["n_components"],
                     lags=np.asarray(fitted["lags"]),
                     seed=0,
@@ -781,19 +953,20 @@ def wall_time(names, n_clips: int = 8) -> pd.DataFrame:
                 warm,
             )
             result["device"] = "cpu (numpy)"
+        result["run"] = name
         result["video_s"] = [len(np.load(e.times)) / timing.CLIP_FS for e in timed]
         result["when"] = time.strftime("%Y-%m-%d %H:%M")
-        done[name] = result
+        done[label] = result
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(done, indent=2))
     rows = []
-    for name in names:
-        r = done[name]
+    for label in labels:
+        r = done[label]
         seconds = np.array([c["seconds"] for c in r["clips"]])
         video = np.array(r["video_s"])
         rows.append(
             {
-                "method": name,
+                "method": label,
                 "device": r["device"],
                 "parameters (M)": r.get("params_m"),
                 "s per clip (median)": float(np.median(seconds)),
@@ -806,168 +979,170 @@ def wall_time(names, n_clips: int = 8) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-# --- the analysis tables, per method, cached ------------------------------------------
-
-
-def _tables_paths(name: str) -> dict[str, Path]:
-    return {
-        k: _derived(name) / f"analysis-{_tag(name)}-{k}.parquet"
-        for k in analysis.TABLES
-    }
-
-
-def done(name: str) -> bool:
-    """Whether :func:`tables` of *name* are cached."""
-    return all(p.is_file() for p in _tables_paths(name).values())
-
-
-def test_clips(name: str) -> dict[str, str]:
-    """Clip stem -> test set of the clips run *name* was scored on: the published test
-    lists, or, for a cross-validation run, the clips its own ``evaluation.json`` lists."""
-    if name not in CV_RUNS:
-        return clip_sets()
-    result = evaluation(name)
-    return {
-        c["clip_id"].split("/")[-1]: SETS[c["group"]]
-        for c in result["clips"]
-        if c["group"] in SETS
-    }
-
-
-def tables(
-    name: str, progress: Callable[[Iterable], Iterable] = iter
-) -> dict[str, pd.DataFrame]:
-    """:func:`zephyr.benchmarks.analysis.clip_tables` of one method over every test
-    clip, labelled by method, clip and set; cached. *progress* wraps the loop over clips
-    (e.g. a progress bar); predictions not cached yet are made here."""
-    paths = _tables_paths(name)
-    if done(name):
-        return {k: pd.read_parquet(p) for k, p in paths.items()}
-    parts: dict[str, list] = {k: [] for k in analysis.TABLES}
-    sets = test_clips(name)
-    for stem in progress(list(sets)):
-        label = {"method": name, "stem": stem, "set": sets[stem]}
-        found = analysis.clip_tables(
-            prediction(name, stem), truth(stem), RUNS[name].head
-        )
-        for k, v in found.items():
-            parts[k].append(v.assign(**label))
-    out = {k: pd.concat(v, ignore_index=True) for k, v in parts.items()}
-    _derived(name).mkdir(parents=True, exist_ok=True)
-    for k, v in out.items():
-        v.to_parquet(paths[k])
-    return out
-
-
-def errors(name: str, stem: str) -> pd.DataFrame:
-    """:func:`zephyr.benchmarks.analysis.errors` of one method on one test clip."""
-    frame_t, frames = gray(stem)
-    found = analysis.errors(
-        prediction(name, stem), truth(stem), RUNS[name].head, frame_t, frames
-    )
-    return found.assign(stem=stem, method=name)
-
-
-def set_errors(name: str, set_name: str) -> pd.DataFrame:
-    """:func:`errors` of every clip of one test set (``SETS`` value), cached in
-    ``cache/walkthrough``; delete the file to recompute."""
-    path = _derived(name) / f"errors-{_tag(name)}-{set_name.split(':')[0]}.parquet"
-    if path.is_file():
-        return pd.read_parquet(path)
-    stems = sorted(s for s, v in test_clips(name).items() if v == set_name)
-    found = pd.concat([errors(name, s) for s in stems], ignore_index=True)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    found.to_parquet(path)
-    return found
-
-
-@functools.cache
-def _all_entries() -> dict[str, features.ClipEntry]:
-    """Every clip of the dataset copy with a cache entry, train and validation too."""
-    clip_list = load(ClipList, root() / "dataset" / "clips.toml", check_files=False)
-    cache = root() / "cache" / test_sets.RECIPE
-    out = {}
-    for c in clip_list.resolve():
-        found = features.lookup(c, clip_list.preprocess, cache)
-        if found is not None:
-            out[c.source.stem] = found
-    return out
-
-
-def animal_breath_rates() -> dict[str, np.ndarray]:
-    """Every thermistor breath's rate (Hz) per animal, over the clips of every session
-    the corpus assigns to a set, from each clip's cached events."""
-    folds = pd.read_parquet(root() / "dataset" / "raw" / "folds.parquet")
-    used = folds[folds["set"].notna()]
-    subject = dict(zip(used["session_id"], used["subject_id"].astype(str), strict=True))
-    out: dict[str, list[np.ndarray]] = {}
-    for stem, e in _all_entries().items():
-        animal = subject.get(stem.rsplit("_span", 1)[0])
-        if animal is not None:
-            out.setdefault(animal, []).append(
-                1.0 / np.diff(np.load(e.events)["onset_times"])
-            )
-    return {k: np.concatenate(v) for k, v in out.items()}
-
-
-# --- a run's own held-out clips, made here ------------------------------------------
-
-REMOTE_DATASET = "/data/zephyr-dataset"
-"""Where the capsule mounts the dataset: the root a run's clip lists name."""
-DATASET_BUCKET = storage.key("zephyr-dataset")
+# --- a run's own held-out clips of other cameras, and saliency ----------------------------
 
 
 def held_out_entries(
     name: str, spans: Iterable[str]
 ) -> list[tuple[features.ClipEntry, tuple[int, ...], tuple[int, int]]]:
     """Network run *name*'s own held-out clips (test set A of its ``config.json``) of
-    the recording *spans*, made on this machine: their files downloaded under
-    ``root()/views`` (which stands for the capsule's dataset, so cache keys match its),
-    and their crops made by zephyr's preprocessing with the list's own recipe and boxes
-    into ``root()/cache``. Each comes with its box and the frame size (``target_size``)
-    the box is on."""
-    from zephyr.preprocess import preprocess_clips
-
-    m = RUNS[name]
-    config = json.loads(
-        _fetch(f"{folder(m)}/{seeds(folder(m))[0]}/config.json").read_text()
-    )
+    the recording *spans*, as the run read them: their entries in the copy's feature
+    cache of their camera. Each comes with its box and the frame size
+    (``target_size``) the box is on."""
+    config = json.loads(run_file(name, "config.json").read_text())
     listed = config["test_clip_lists"]["test_a"]
     wanted = set(spans)
-    local = root() / "views"
-    mapping = f"{local.as_posix()}={REMOTE_DATASET}"
-    known = os.environ.get("ZEPHYR_PATH_MAP", "")
-    if mapping not in known.split(";"):
-        os.environ["ZEPHYR_PATH_MAP"] = ";".join(p for p in (known, mapping) if p)
-
-    def here(path: str) -> str:
-        return path.replace(REMOTE_DATASET, local.as_posix())
-
-    clips = [
-        c for c in listed["clip"] if Path(c["video"]).stem.rsplit("_", 1)[0] in wanted
+    clips_ = [
+        c
+        | {
+            k: local_path(c[k])
+            for k in ("video", "timestamps", "thermistor")
+            if isinstance(c.get(k), str)
+        }
+        for c in listed["clip"]
+        if Path(c["video"]).stem.rsplit("_", 1)[0] in wanted
     ]
-    for c in clips:
-        for key in ("video", "timestamps", "thermistor"):
-            if not isinstance(c.get(key), str):
-                continue
-            target = Path(here(c[key]))
-            if not target.is_file():
-                target.parent.mkdir(parents=True, exist_ok=True)
-                part = target.with_name(target.name + ".part")
-                key_s3 = c[key].replace(REMOTE_DATASET, DATASET_BUCKET)
-                _s3().get(key_s3, str(part))
-                part.replace(target)
-            c[key] = target.as_posix()
-    clip_list = ClipList.model_validate({**listed, "clip": clips})
-    resolved = clip_list.resolve()
-    size = clip_list.preprocess.target_size
-    camera = Path(resolved[0].video).stem.rsplit("_", 1)[1]
-    cache = root() / "cache" / f"features-{size[0]}x{size[1]}-box96x96-60hz-{camera}"
-    preprocess_clips(resolved, clip_list.preprocess, cache, workers=4)
-    return [
-        (features.lookup(c, clip_list.preprocess, cache), tuple(c.box), tuple(size))
-        for c in resolved
-    ]
+    clip_list = ClipList.model_validate({**listed, "clip": clips_})
+    out = []
+    for c in clip_list.resolve():
+        cache = cache_folder(c, clip_list.preprocess)
+        found = features.lookup(c, clip_list.preprocess, cache)
+        if found is None:
+            raise FileNotFoundError(f"no cache entry for {c.name} under {cache}")
+        _require(Path(c.video))
+        out.append((found, tuple(c.box), tuple(clip_list.preprocess.target_size)))
+    return out
+
+
+def with_unit(table: pd.DataFrame) -> pd.DataFrame:
+    """*table* (a ``session`` and ``subject`` per row) with its ``rig`` and ``unit``
+    (an animal on one rig, the unit of comparison)."""
+    folds = pd.read_parquet(dataset_raw("folds.parquet"))
+    rig = table["session"].map(
+        dict(zip(folds["session_id"], folds["rig"], strict=True))
+    )
+    return table.assign(rig=rig, unit=table["subject"].astype(str) + "@" + rig)
+
+
+SALIENCY_BINS = np.arange(-1.0, 1.0 + 1e-9, 1 / 60) - 1 / 120
+"""Offsets (s) around each inhale the saliency profile is binned at."""
+
+
+def _picked(name: str) -> pd.Series:
+    """For every new-animal unit of run *name*, the clip nearest the unit's median
+    correlation."""
+    c = scores([name]).query("set == @SETS['test_a']")
+    c = with_unit(c[c["stem"].map(is_local)])
+    median = c.groupby("unit")["correlation"].transform("median")
+    typical = (c["correlation"] - median).abs()
+    return c.loc[typical.groupby(c["unit"]).idxmin()].set_index("unit")["stem"]
+
+
+def _face_saliency() -> dict:
+    keys = ("occlusion", "trace", "gradient", "random", "profile")
+    rows = {k: [] for k in (*keys, "crop")}
+    units, of, stems = [], [], []
+    dev = device()
+    for f in CV.folds:
+        name = cv_name(REFERENCE, f)
+        model, mean, std, _, _ = network(name)
+        model = model.to(dev).float().eval()
+        control = analysis.randomized(model)
+        for unit, stem in _picked(name).items():
+            found = analysis.clip_saliency(
+                model,
+                control,
+                truth_entry(stem),
+                mean,
+                std,
+                truth(stem)["inhale"],
+                SALIENCY_BINS,
+                device=dev,
+            )
+            for k in keys:
+                rows[k].append(found[k])
+            t, frames = gray(stem)
+            rows["crop"].append(np.asarray(frames[:: max(1, len(t) // 50), 0]).mean(0))
+            units.append(unit)
+            of.append(f)
+            stems.append(stem)
+    out = {k: np.array(v) for k, v in rows.items()}
+    return out | {
+        "unit": np.array(units),
+        "fold": np.array(of),
+        "stem": np.array(stems),
+        "offset_s": (SALIENCY_BINS[:-1] + SALIENCY_BINS[1:]) / 2,
+    }
+
+
+def _camera_saliency(label: str, fold: str, spans: dict[str, str]) -> dict:
+    """The maps of camera network *label* of *fold* on its own clips of *spans*
+    (span -> unit), with each clip's whole first frame and its box."""
+    import cv2
+
+    dev = device()
+    name = cv_name(label, fold)
+    model, mean, std, _, _ = network(name)
+    model = model.to(dev).float().eval()
+    control = analysis.randomized(model)
+    keys = ("occlusion", "trace", "gradient", "random", "profile")
+    rows = {k: [] for k in (*keys, "crop", "frame", "box")}
+    units, stems = [], []
+    for e, box_, size in held_out_entries(name, spans):
+        found = analysis.clip_saliency(
+            model,
+            control,
+            e,
+            mean,
+            std,
+            analysis.truth(e)["inhale"],
+            SALIENCY_BINS,
+            device=dev,
+        )
+        for k in keys:
+            rows[k].append(found[k])
+        frames = np.load(e.frames, mmap_mode="r")
+        rows["crop"].append(np.asarray(frames[:: max(1, len(frames) // 50), 0]).mean(0))
+        video = cv2.VideoCapture(str(e.video))
+        _, image = video.read()
+        video.release()
+        rows["frame"].append(cv2.resize(cv2.cvtColor(image, cv2.COLOR_BGR2GRAY), size))
+        rows["box"].append(box_)
+        stem = Path(str(e.video)).stem
+        units.append(spans[stem.rsplit("_", 1)[0]])
+        stems.append(stem)
+    out = {k: np.array(v) for k, v in rows.items()}
+    return out | {
+        "unit": np.array(units),
+        "fold": np.array([fold] * len(units)),
+        "stem": np.array(stems),
+        "offset_s": (SALIENCY_BINS[:-1] + SALIENCY_BINS[1:]) / 2,
+    }
+
+
+def saliency() -> dict[str, dict]:
+    """Supplementary Fig. 6's maps, by camera (the ``saliency`` analysis; it runs the
+    networks on the GPU). The face network of each fold on its new animals: for every
+    unit, the clip nearest the unit's median correlation, two 8.5-s windows
+    (:func:`zephyr.benchmarks.analysis.clip_saliency`). The side and front networks of
+    fold cv_0 on the same spans: their clips are each run's own held-out list."""
+    face = _arrays_memo("saliency", "face-cv.npz", _face_saliency)
+    out = {"Face camera": face}
+    fold = CV.folds[0]
+    spans = {
+        str(s).rsplit("_", 1)[0]: str(u)
+        for s, u, f in zip(face["stem"], face["unit"], face["fold"], strict=True)
+        if f == fold
+    }
+    for camera in ("side", "front"):
+        out[f"{camera.title()} camera"] = _arrays_memo(
+            "saliency",
+            f"{camera}-{fold}.npz",
+            lambda camera=camera: _camera_saliency(
+                f"Zephyr, {camera} camera", fold, spans
+            ),
+        )
+    return out
 
 
 def clip_scores(name: str) -> pd.DataFrame:
@@ -990,87 +1165,252 @@ def clip_scores(name: str) -> pd.DataFrame:
     )
 
 
-DF_ROOT = Path(os.environ.get("ZEPHYR_DF_ROOT", "D:/zephyr-df-dataset"))
-"""The local copy of zephyr-df-dataset: its held-out list (``df_test_a.toml``, the
-dataset's entries of animal 811021) and the crops of those clips in ``cache/``."""
-REMOTE_DF = "/data/zephyr-df-dataset"
+def run_of(names: Iterable[str], stem: str) -> str:
+    """The run of *names* (pooled, :func:`pooled`) that scored clip *stem*."""
+    for n in names:
+        if stem in set(clip_scores(n)["stem"]):
+            return n
+    raise KeyError(f"none of {list(names)} scored {stem}")
+
+
+# --- dynamic foraging (computing only) ----------------------------------------------------
+
+
+@functools.cache
+def df_recipe():
+    """The recipe of the dynamic-foraging clips."""
+    return manuscript_clips("clips-df.toml").preprocess
 
 
 @functools.cache
 def df_entries() -> dict[str, tuple[features.ClipEntry, tuple[int, ...]]]:
-    """Each held-out DF clip's cache entry and crop box (on the 360 x 270 frame), by
-    stem; the copy named as the capsule names the dataset, so cache keys match."""
-    mapping = f"{DF_ROOT.as_posix()}={REMOTE_DF}"
-    known = os.environ.get("ZEPHYR_PATH_MAP", "")
-    if mapping not in known.split(";"):
-        os.environ["ZEPHYR_PATH_MAP"] = ";".join(p for p in (known, mapping) if p)
-    clip_list = load(ClipList, DF_ROOT / "df_test_a.toml")
+    """Each dynamic-foraging clip's cache entry and crop box (on the 360 x 270 frame),
+    by stem, from the capsule's clip list and the copy's caches."""
+    clip_list = manuscript_clips("clips-df.toml")
     out = {}
     for c in clip_list.resolve():
-        entry = features.lookup(c, clip_list.preprocess, DF_ROOT / "cache")
-        if entry is not None:
-            out[Path(str(c.video)).stem] = (entry, tuple(c.box))
+        found = features.lookup(
+            c, clip_list.preprocess, cache_folder(c, clip_list.preprocess)
+        )
+        if found is not None:
+            out[Path(str(c.video)).stem] = (found, tuple(c.box))
     return out
 
 
-APPLICATION_ROOT = Path(os.environ.get("ZEPHYR_APPLICATION_ROOT", "D:/ToBePredicted"))
-"""The folder of the manifest's application sessions, each with its face camera's
-``metadata.csv`` and ``predictions/<run>-<fold>/`` from ``zephyr predict``."""
-OPEN_DATA = "s3://aind-open-data"
+# --- Fig. 1b, c: one session in the task ---------------------------------------------------
 
 
-@functools.cache
+def _asset_table(asset: str, name: str) -> pd.DataFrame:
+    return pd.read_parquet(_require(OPEN_DATA / asset / f"{name}.parquet"))
+
+
+def _odor_sites(sites: pd.DataFrame) -> pd.DataFrame:
+    """The odor sites of a session's ``sites`` table: onset, leaving, kind and reward."""
+    from . import plots
+
+    odor = sites[
+        (sites["site_label"] == "RewardSite") & sites["odor_onset_time"].notna()
+    ]
+    return pd.DataFrame(
+        {
+            "odor": odor["odor_onset_time"].to_numpy(),
+            "leave": odor["stop_time"].to_numpy(),
+            "kind": [
+                plots.site_kind(bool(c), bool(r))
+                for c, r in zip(odor["has_choice"], odor["has_reward"], strict=True)
+            ],
+            "reward": odor["reward_onset_time"].to_numpy(),
+        }
+    )
+
+
+def _task() -> dict[str, pd.DataFrame]:
+    from zephyr.events import detect
+
+    asset = picks.TASK_ASSET
+    session = asset.split("_processed")[0]
+    name = cv_name(REFERENCE, picks.TASK_FOLD)
+    speed = _asset_table(asset, "position_velocity")["velocity"]
+    licks = _asset_table(asset, "licks")
+    sites = _odor_sites(_asset_table(asset, "sites"))
+    out = {
+        "licks": pd.DataFrame({"time": licks.index[licks["is_lick_onset"]].to_numpy()}),
+        "sites": sites,
+    }
+    for span in (1, 2):
+        stem = f"{session}_span{span}_FaceCamera"
+        p, t = prediction(name, stem), truth(stem)
+        g = p["times"]
+        out[f"clip{span}"] = pd.DataFrame(
+            {
+                "time": g,
+                "speed": np.interp(g, speed.index.to_numpy(), speed.to_numpy()),
+                "video": analysis.breathing_rate(p["head"], g),
+                "thermistor": analysis.breathing_rate(t["inhale"], g),
+            }
+        )
+        out[f"truth{span}"] = pd.DataFrame({"time": t["times"], "signal": t["signal"]})
+    # The thermistor over the whole session, its events found as the corpus finds them
+    # (the clip list's detector), on a 60-Hz grid.
+    raw = pd.read_parquet(
+        _require(dataset_dir() / "raw" / "thermistor" / f"{session}.parquet")
+    )
+    events = load(ClipList, dataset_dir() / "clips.toml", check_files=False).events
+    inhale = detect(events.method, raw, params=events.params).inhale
+    g = np.arange(raw["Time"].iloc[0], raw["Time"].iloc[-1], 1 / 60)
+    session_rate = pd.DataFrame(
+        {
+            "time": g,
+            "speed": np.interp(g, speed.index.to_numpy(), speed.to_numpy()),
+            "rate": analysis.breathing_rate(inhale, g),
+        }
+    )
+    out["session"] = session_rate.assign(
+        thermistor_hz=1 / float(np.median(np.diff(raw["Time"])))
+    )
+    lags = np.arange(-2.0, 5.0 + 1e-9, 1 / 60)
+    inside = sites[sites["odor"].between(g[0] - lags[0], g[-1] - lags[-1])]
+    parts = []
+    for kind, group in inside.groupby("kind"):
+        for signal in ("rate", "speed"):
+            x = analysis.event_aligned(
+                g, session_rate[signal].to_numpy(), group["odor"].to_numpy(), lags
+            )
+            low, high = analysis.bootstrap_mean(x)
+            parts.append(
+                pd.DataFrame(
+                    {
+                        "site": kind,
+                        "signal": signal,
+                        "lag": lags,
+                        "mean": np.nanmean(x, 0),
+                        "low": low,
+                        "high": high,
+                        "n": len(x),
+                    }
+                )
+            )
+    out["aligned"] = pd.concat(parts, ignore_index=True)
+    return out
+
+
+TASK_TABLES = (
+    "licks",
+    "sites",
+    "clip1",
+    "clip2",
+    "truth1",
+    "truth2",
+    "session",
+    "aligned",
+)
+
+
+def task() -> dict[str, pd.DataFrame]:
+    """Fig. 1b, c: the session of :data:`picks.TASK_ASSET` in the task (the ``task``
+    analysis): its ``licks`` and odor ``sites``; each of its two clips predicted by the
+    fold that holds the animal out (``clip1``, ``clip2``: speed, the video's and the
+    thermistor's breathing rate) and its thermistor (``truth1``, ``truth2``); the whole
+    session's thermistor rate and speed (``session``, with the thermistor's
+    ``thermistor_hz``); rate and speed around odor onset per kind of site
+    (``aligned``)."""
+    paths = {k: made("task", f"{k}.parquet") for k in TASK_TABLES}
+    if all(p.is_file() for p in paths.values()):
+        return {k: pd.read_parquet(p) for k, p in paths.items()}
+    out = _task()
+    for k, p in paths.items():
+        p.parent.mkdir(parents=True, exist_ok=True)
+        out[k].to_parquet(p)
+    return out
+
+
+# --- sessions without a thermistor ----------------------------------------------------------
+
+
+def _application_clip(session: str, camera: str = "FaceCamera") -> dict:
+    """The capsule's clip of one camera of an application session (its box, frame
+    and frame rate)."""
+    raw = tomllib.loads((MANUSCRIPT / "clips" / "clips-application.toml").read_text())
+    found = next(c for c in raw["clip"] if c["group"] == f"{session}_{camera}")
+    return found | {"target_size": raw["preprocess"]["target_size"]}
+
+
 def application(session: str) -> dict:
-    """One of the manifest's sessions without a thermistor: the prediction on the Harp
-    clock (``times``, ``signal``, ``onset``; ``video_time``, its time in the video, which
-    quality-control windows use) and its inhalations (``head``), and from
-    its processed asset the running ``speed``, ``sites``, ``licks``, ``subject`` and
-    the ``date`` it was acquired."""
-    app = RESULTS.application
-    entry = next(s for s in app.session if s.session == session)
-    run = RUNS[cv_name(app.network, app.fold)]
-    folder = APPLICATION_ROOT / session
-    pred = pd.read_parquet(
-        folder / "predictions" / f"{run.run}-{run.fold}" / "video.prediction.parquet"
-    )
-    clock = pd.read_csv(
-        folder / "FaceCamera" / "metadata.csv", usecols=["ReferenceTime"]
-    )
-    times = clock["ReferenceTime"].to_numpy()[pred["frame"].to_numpy()]
+    """One of the manifest's sessions without a thermistor (the ``application``
+    analysis): the face camera's prediction on the Harp clock (``times``, ``signal``,
+    ``onset``; ``video_time``, its time in the video, which quality-control windows use)
+    and its inhalations (``head``), and from its processed asset the running ``speed``,
+    ``sites``, ``licks``, ``subject`` and the ``date`` it was acquired."""
+    entry_ = next(s for s in RESULTS.application.session if s.session == session)
 
-    def asset(name: str) -> Path:
-        return dataset_file(f"{entry.asset}/{name}", OPEN_DATA)
+    def make() -> pd.DataFrame:
+        pred = pd.read_parquet(
+            _require(
+                LOCAL_RUNS
+                / "application"
+                / f"{session}_FaceCamera"
+                / "video.prediction.parquet"
+            )
+        )
+        clock = pd.read_csv(
+            _require(
+                OPEN_DATA / session / "behavior-videos" / "FaceCamera" / "metadata.csv"
+            ),
+            usecols=["ReferenceTime"],
+        )
+        return pred.assign(
+            times=clock["ReferenceTime"].to_numpy()[pred["frame"].to_numpy()]
+        )
 
-    licks = pd.read_parquet(asset("licks.parquet"))
-    # The face frame, and the crop box on it (the box is on the clip's own frame size).
-    from PIL import Image
+    pred = _frame_memo("application", f"{session}/prediction.parquet", make)
+    speed = _frame_memo(
+        "application",
+        f"{session}/speed.parquet",
+        lambda: _asset_table(entry_.asset, "position_velocity")[["velocity"]],
+    )["velocity"]
+    sites = _frame_memo(
+        "application",
+        f"{session}/sites.parquet",
+        lambda: _asset_table(entry_.asset, "sites"),
+    )
 
-    thumbnail = np.asarray(Image.open(folder / "thumbnail.png").convert("L"))
-    clip = tomllib.loads(
-        (
-            folder / "predictions" / f"{run.run}-{run.fold}" / "video.clip.toml"
-        ).read_text()
+    def licks_() -> pd.DataFrame:
+        licks = _asset_table(entry_.asset, "licks")
+        return pd.DataFrame({"time": licks.index[licks["is_lick_onset"]].to_numpy()})
+
+    licks = _frame_memo("application", f"{session}/licks.parquet", licks_)
+
+    def meta_() -> dict:
+        subject = json.loads(
+            _require(OPEN_DATA / entry_.asset / "subject.json").read_text()
+        )
+        acquired = json.loads(
+            _require(OPEN_DATA / entry_.asset / "acquisition.json").read_text()
+        )
+        return {
+            "subject": str(subject["subject_id"]),
+            "date": acquired["acquisition_start_time"],
+        }
+
+    meta = _memo(
+        "application",
+        f"{session}/meta.json",
+        meta_,
+        lambda p: json.loads(p.read_text()),
+        lambda d, p: p.write_text(json.dumps(d)),
     )
-    first = clip["clip"][0]
-    scale = (
-        thumbnail.shape[1]
-        / (first.get("frame") or clip["preprocess"]["target_size"])[0]
-    )
+    times = pred["times"].to_numpy()
     return {
-        "thumbnail": thumbnail,
-        "box": tuple(v * scale for v in first["box"]),
         "times": times,
         "video_time": pred["time"].to_numpy(),
         "signal": pred["signal"].to_numpy(),
         "onset": pred["onset"].to_numpy(),
-        "head": times[pred["inhale"].to_numpy()],
-        "speed": pd.read_parquet(asset("position_velocity.parquet"))["velocity"],
-        "sites": pd.read_parquet(asset("sites.parquet")),
-        "licks": licks.index[licks["is_lick_onset"]].to_numpy(),
-        "subject": str(json.loads(asset("subject.json").read_text())["subject_id"]),
-        "date": pd.Timestamp(
-            json.loads(asset("acquisition.json").read_text())["acquisition_start_time"]
-        ),
+        "head": times[pred["inhale"].to_numpy(bool)],
+        "speed": speed,
+        "sites": sites,
+        "licks": licks["time"].to_numpy(),
+        "subject": meta["subject"],
+        "date": pd.Timestamp(meta["date"]),
     }
 
 
@@ -1079,33 +1419,28 @@ def application_frames(
 ) -> tuple[list[np.ndarray], tuple[float, ...]]:
     """Gray frames of an application session's face video at *video_times* (s in the
     video, frame *i* at *i* / the clip's frame rate, as its prediction), and the crop
-    box in their pixels."""
-    import cv2
+    box in their pixels (the ``application`` analysis)."""
 
-    app = RESULTS.application
-    run = RUNS[cv_name(app.network, app.fold)]
-    clip = tomllib.loads(
-        (
-            APPLICATION_ROOT
-            / session
-            / "predictions"
-            / f"{run.run}-{run.fold}"
-            / "video.clip.toml"
-        ).read_text()
-    )
-    first = clip["clip"][0]
-    video = cv2.VideoCapture(first["video"])
-    frames = []
-    for t in video_times:
-        video.set(cv2.CAP_PROP_POS_FRAMES, round(t * first["frame_rate"]))
-        _, image = video.read()
-        frames.append(cv2.cvtColor(image, cv2.COLOR_BGR2GRAY))
-    video.release()
-    scale = (
-        frames[0].shape[1]
-        / (first.get("frame") or clip["preprocess"]["target_size"])[0]
-    )
-    return frames, tuple(v * scale for v in first["box"])
+    def make() -> dict:
+        import cv2
+
+        first = _application_clip(session)
+        video = cv2.VideoCapture(_require(Path(local_path(first["video"]))).as_posix())
+        frames = []
+        for t in video_times:
+            video.set(cv2.CAP_PROP_POS_FRAMES, round(t * first["frame_rate"]))
+            _, image = video.read()
+            frames.append(cv2.cvtColor(image, cv2.COLOR_BGR2GRAY))
+        video.release()
+        scale = frames[0].shape[1] / (first.get("frame") or first["target_size"])[0]
+        return {
+            "frames": np.stack(frames),
+            "box": np.asarray(first["box"], float) * scale,
+        }
+
+    key = "-".join(f"{t:.3f}" for t in video_times)
+    found = _arrays_memo("application", f"{session}/frames-{key}.npz", make)
+    return list(found["frames"]), tuple(float(v) for v in found["box"])
 
 
 def is_application_video(stem: str) -> bool:
@@ -1130,66 +1465,65 @@ def application_session(stem: str) -> str:
     return max(found, key=len)
 
 
-QC_ROOT = Path(os.environ.get("ZEPHYR_QC_ROOT", "D:/zephyr-qc-probe/v5"))
-"""The folder of the manifest's ``[quality]`` reports and reference."""
+# --- quality control ----------------------------------------------------------------------
 
 
-def _clip_entry(stem: str) -> features.ClipEntry | None:
-    """The cache entry of a corpus or dynamic-foraging clip, for its truth; None for a
-    video of neither (a session without a thermistor)."""
-    try:
-        return truth_entry(stem)
-    except (KeyError, FileNotFoundError):
-        found = df_entries().get(stem)
-        return found[0] if found else None
+def quality_folders(reports: str) -> list[Path]:
+    """The report folders a ``[quality]`` set names (a glob under the root)."""
+    if reports.startswith("analysis/"):
+        found = sorted(ANALYSES.glob(reports.removeprefix("analysis/")))
+    else:
+        found = sorted(LOCAL_RUNS.glob(reports))
+    if not found:
+        raise FileNotFoundError(f"no folder {reports} in the runs")
+    return found
 
 
-@functools.cache
 def report_truth(folder: Path) -> pd.DataFrame:
     """The real scores of each prediction in *folder* (``zephyr predict
     --quality-control``) over the whole clip and over each window its report measures
     (:func:`zephyr.benchmarks.analysis.window_truth`): the paper's check on the
-    label-free scores; empty for videos without a thermistor."""
+    label-free scores; empty for videos without a thermistor (computing only)."""
     from zephyr.predict import SUFFIX
 
     parts = []
     for path in sorted(Path(folder).glob(f"*{SUFFIX}")):
         stem = path.name.removesuffix(SUFFIX)
-        entry = _clip_entry(stem)
-        if entry is None or entry.thermistor is None:
+        try:
+            e = truth_entry(stem)
+        except KeyError:
+            continue  # a video without a thermistor
+        if e.thermistor is None:
             continue
-        table = analysis.window_truth(entry, pd.read_parquet(path))
+        table = analysis.window_truth(e, pd.read_parquet(path))
         parts.append(table.assign(stem=stem))
     return pd.concat(parts, ignore_index=True) if parts else pd.DataFrame()
 
 
-@functools.cache
-def quality_windows() -> pd.DataFrame:
-    """Every 30-s window of the manifest's ``[quality]`` sets, one row each: ``set``,
-    ``role`` (``validation`` for the reference's own windows), ``stem``, its
-    ``session`` (:func:`video_session`), the measures and, where the truth is known,
-    ``truth_<metric>``. Sets of sessions without a thermistor keep only the manifest's
-    ``[application]`` sessions."""
+def _quality_windows() -> pd.DataFrame:
     from zephyr.benchmarks.probe import load_probes
     from zephyr.quality_control import load_reports
     from zephyr.quality_control.reference import Reference
 
     quality = RESULTS.quality
-    validation = pd.DataFrame(Reference.load(QC_ROOT / quality.reference).validation)
+    validation = pd.DataFrame(
+        Reference.load(_require(_runs_path(quality.reference))).validation
+    )
     parts = [
         validation.rename(columns={"clip_id": "stem"}).assign(
             set="Validation", role="validation"
         )
     ]
     for s in quality.set:
+        folders = quality_folders(s.reports)
         if s.noise is not None:
-            table = load_probes(QC_ROOT / s.reports, windows=True)
+            table = pd.concat([load_probes(f, windows=True) for f in folders])
             table = table[table["sigma"] == s.noise].drop(columns="sigma")
         else:
-            table = load_reports(QC_ROOT / s.reports)[1]
-            truth = report_truth(QC_ROOT / s.reports)
-            if len(truth):
-                windows = truth[~truth["whole"]].drop(columns=["whole", "end"])
+            table = pd.concat([load_reports(f)[1] for f in folders], ignore_index=True)
+            truth_ = pd.concat([report_truth(f) for f in folders], ignore_index=True)
+            if len(truth_):
+                windows = truth_[~truth_["whole"]].drop(columns=["whole", "end"])
                 table = with_truth(table, windows)
         if s.role in ("application", "camera"):
             # only the manifest's sessions, whatever else the reports folder holds
@@ -1197,6 +1531,15 @@ def quality_windows() -> pd.DataFrame:
         parts.append(table.assign(set=s.label, role=s.role))
     windows = pd.concat(parts, ignore_index=True)
     return windows.assign(session=windows["stem"].map(video_session))
+
+
+def quality_windows() -> pd.DataFrame:
+    """Every 30-s window of the manifest's ``[quality]`` sets, one row each: ``set``,
+    ``role`` (``validation`` for the reference's own windows), ``stem``, its
+    ``session`` (:func:`video_session`), the measures and, where the truth is known,
+    ``truth_<metric>`` (the ``quality`` analysis). Sets of sessions without a thermistor
+    keep only the manifest's ``[application]`` sessions."""
+    return _frame_memo("quality", "windows.parquet", _quality_windows)
 
 
 _SESSION = re.compile(r"\d+_\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}")
@@ -1211,12 +1554,12 @@ def video_session(stem: str) -> str:
     return found.group(0)
 
 
-def with_truth(table: pd.DataFrame, truth: pd.DataFrame) -> pd.DataFrame:
+def with_truth(table: pd.DataFrame, truth_: pd.DataFrame) -> pd.DataFrame:
     """*table* (a report's windows) with each window's real scores, by video and start."""
     return (
         table.assign(_start=table["start"].round(6))
         .merge(
-            truth.assign(_start=truth["start"].round(6)).drop(columns="start"),
+            truth_.assign(_start=truth_["start"].round(6)).drop(columns="start"),
             on=["stem", "_start"],
             how="left",
             validate="one_to_one",
@@ -1225,13 +1568,28 @@ def with_truth(table: pd.DataFrame, truth: pd.DataFrame) -> pd.DataFrame:
     )
 
 
+def application_window() -> pd.Series:
+    """Fig. 5b's window: the lowest of the sessions without a thermistor (face camera)
+    on the first quality-control measure, with its ``session``."""
+    from . import style
+
+    label = next(q.label for q in RESULTS.quality.set if q.role == "application")
+    windows = quality_windows()
+    apps = windows[windows["set"] == label]
+    row = analysis.example_windows(apps, next(iter(style.QC_MEASURES))).iloc[0]
+    return pd.concat([row, pd.Series({"session": application_session(row["stem"])})])
+
+
 def quality_traces(label: str, stem: str) -> pd.DataFrame:
     """One video's prediction (``time``, ``signal``, ``onset``, ``inhale``) in the
     ``[quality]`` set *label*."""
     from zephyr.predict import SUFFIX
 
-    folder = next(s.reports for s in RESULTS.quality.set if s.label == label)
-    return pd.read_parquet(QC_ROOT / folder / f"{stem}{SUFFIX}")
+    reports = next(s.reports for s in RESULTS.quality.set if s.label == label)
+    for f in quality_folders(reports):
+        if (f / f"{stem}{SUFFIX}").is_file():
+            return pd.read_parquet(f / f"{stem}{SUFFIX}")
+    raise FileNotFoundError(f"{label}: no prediction of {stem}")
 
 
 def quality_noise() -> tuple[pd.DataFrame, Path]:
@@ -1239,8 +1597,8 @@ def quality_noise() -> tuple[pd.DataFrame, Path]:
     ``stem``, ``sigma``, the measures and ``truth_<metric>``), and its folder."""
     from zephyr.benchmarks.probe import load_probes
 
-    folder = QC_ROOT / next(s.reports for s in RESULTS.quality.set if s.noise)
-    return load_probes(folder), folder
+    (found,) = quality_folders(next(s.reports for s in RESULTS.quality.set if s.noise))
+    return load_probes(found), found
 
 
 def quality_noise_traces(stem: str) -> dict[float, pd.DataFrame]:
@@ -1248,3 +1606,52 @@ def quality_noise_traces(stem: str) -> dict[float, pd.DataFrame]:
     from zephyr.benchmarks.probe import probe_traces
 
     return probe_traces(quality_noise()[1], stem)
+
+
+# --- Fig. S4: what the three cameras see -------------------------------------------------------
+
+
+def camera_views(session: str) -> dict[str, tuple[np.ndarray, tuple[float, ...]]]:
+    """One session's three cameras at half size, with the crop box each network reads
+    (the first span's box, in the shown pixels): the face camera's thumbnail and the
+    corpus's clip list; the side and front cameras' first frame of the clip, at the
+    frame size their clip lists' boxes are on (the ``corpus`` analysis)."""
+    lists = {
+        "Face camera": None,
+        "Side camera": "clips-side-720.toml",
+        "Front camera": "clips-front-720.toml",
+    }
+
+    def make() -> dict:
+        import cv2
+
+        out = {}
+        for camera, name in lists.items():
+            key = camera.split()[0].lower()
+            if name is None:
+                stem = f"{session}_span1_FaceCamera"
+                clip_, recipe = clip(stem)
+                image = thumbnail(stem)
+                found, width = clip_.box, recipe.target_size[0]
+            else:
+                listed = manuscript_clips(name, [session])
+                c = next(c for c in listed.resolve() if "_span1_" in c.source.stem)
+                video = cv2.VideoCapture(_require(Path(str(c.video))).as_posix())
+                _, frame = video.read()
+                video.release()
+                size = tuple(listed.preprocess.target_size)
+                image = cv2.resize(cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY), size)
+                found, width = c.box, size[0]
+            scale = image.shape[1] / width / 2  # shown at half size
+            out[f"{key}_image"] = image[::2, ::2]
+            out[f"{key}_box"] = np.asarray(found, float) * scale
+        return out
+
+    found = _arrays_memo("corpus", f"views/{session}.npz", make)
+    return {
+        camera: (
+            found[f"{camera.split()[0].lower()}_image"],
+            tuple(float(v) for v in found[f"{camera.split()[0].lower()}_box"]),
+        )
+        for camera in lists
+    }
