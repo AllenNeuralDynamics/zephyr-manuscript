@@ -49,8 +49,8 @@ if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
     $env:PATH = "$env:USERPROFILE\.local\bin;$env:PATH"
     if (-not (Get-Command uv -ErrorAction SilentlyContinue)) { throw "uv is not on PATH." }
 }
-if (-not (Test-Path (Join-Path $Data "sync.json"))) {
-    throw "No data copy at ${Data}: run scripts/sync_data.ps1 first (or pass -Data)."
+if (-not (Test-Path $Data -PathType Container)) {
+    throw "No data copy at ${Data}: pass -Data (or run scripts/sync_data.ps1 first)."
 }
 $changed = git status --porcelain
 if ($changed) { throw "Commit first: the analyses run only from a clean working tree.`n$($changed -join "`n")" }
