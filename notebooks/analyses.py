@@ -4,6 +4,7 @@ __generated_with = "0.25.2"
 app = marimo.App(width="full")
 
 with app.setup:
+    import argparse
     import datetime as dt
     import hashlib
     import importlib.metadata
@@ -47,14 +48,22 @@ with app.setup:
     MANUSCRIPT = runs.MANUSCRIPT
     REPO = Path(__file__).resolve().parents[1]
     NOTEBOOK = Path(__file__).resolve()
-    ARGS = mo.cli_args()
-    SCRIPT = mo.app_meta().mode == "script"
-    """Run as a script, every analysis runs; in the editor, each waits for its button."""
-    FORCE = bool(ARGS.get("force"))
+    SCRIPT = not mo.running_in_notebook()
+    """Run as a script, every analysis runs; in the editor, each waits for its button.
+    (Run with ``python``, the setup cell runs before marimo's context exists, so
+    neither ``mo.app_meta().mode`` nor ``mo.cli_args()`` can tell.)"""
+    _parser = argparse.ArgumentParser(prog="analyses.py")
+    _parser.add_argument("--only", default="")
+    _parser.add_argument("--skip", default="")
+    _parser.add_argument("--force", action="store_true")
+    _argv = sys.argv[1:]
+    _argv = _argv[_argv.index("--") + 1 :] if "--" in _argv else _argv
+    ARGS = _parser.parse_args(_argv if SCRIPT else [])
+    FORCE = ARGS.force
     """``-- --force``: make again an analysis this commit already made."""
-    ONLY = {s for s in str(ARGS.get("only") or "").split(",") if s}
+    ONLY = {s for s in ARGS.only.split(",") if s}
     """``-- --only tables,errors``: only these analyses (as a script)."""
-    SKIP = {s for s in str(ARGS.get("skip") or "").split(",") if s}
+    SKIP = {s for s in ARGS.skip.split(",") if s}
     """``-- --skip timing``: all but these analyses (as a script)."""
 
     def sha256(path: Path) -> str:
@@ -215,7 +224,7 @@ with app.setup:
                 else None,
             },
             "command": sys.argv,
-            "mode": mo.app_meta().mode,
+            "mode": "script" if SCRIPT else "edit",
             "started_utc": dt.datetime.fromtimestamp(started, dt.UTC).isoformat(
                 timespec="seconds"
             ),
