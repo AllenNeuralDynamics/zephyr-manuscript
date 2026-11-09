@@ -1754,7 +1754,7 @@ def fig6efg():
             (qc_windows["set"] == _label) & (qc_windows["stem"] == _stem)
         ]
         _notes[_variant] = (
-            "head vs trace {:.2f}, breaks {:.2f}, peak {:.2f}, background {:.2f}; "
+            "head vs waveform {:.2f}, breaks {:.2f}, peak {:.2f}, background {:.2f}; "
             "true F1 {:.2f}"
         ).format(*_clip[[*style.QC_MEASURES, "truth_inhale_f1"]].median())
     fig6e = plots.refined_traces_panel(
