@@ -1597,8 +1597,10 @@ def application_window() -> pd.Series:
     label = next(q.label for q in RESULTS.quality.set if q.role == "application")
     windows = quality_windows()
     apps = windows[windows["set"] == label]
-    row = analysis.example_windows(apps, next(iter(style.QC_MEASURES))).iloc[0]
-    return pd.concat([row, pd.Series({"session": application_session(row["stem"])})])
+    row = analysis.example_windows(apps, next(iter(style.QC_MEASURES))).iloc[0].copy()
+    # set, not appended: the windows already have a session column
+    row["session"] = application_session(row["stem"])
+    return row
 
 
 def quality_traces(label: str, stem: str) -> pd.DataFrame:
