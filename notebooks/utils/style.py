@@ -213,10 +213,10 @@ QC_ROLES: dict[str, str] = {
 network's validation windows, networks that work, known failures, sessions without
 a thermistor, and the same sessions from another camera."""
 QC_MEASURES: dict[str, str] = {
-    "head_trace_f1": "Head vs trace F1",
+    "head_trace_f1": "Head vs waveform F1",
     "alternation_break_frac": "Alternation breaks",
-    "peak_prob": "Onset peak height",
-    "onset_background": "Onset background",
+    "peak_prob": "Inhalation onset peak height",
+    "onset_background": "Inhalation onset background",
 }
 """The quality-control measures a figure shows, with their labels."""
 NOISE: dict[float, str] = {16.0: "#f4a582", 32.0: "#d55e00", 64.0: "#8c2d04"}
