@@ -18,7 +18,6 @@ METHODS: dict[str, str] = {
     "RhythmFormer": "#882255",
     "Facemap": "#cc79a7",
     "Pixel (motion)": "#5f5f5f",
-    "Pixel (PCA)": "#8c8c8c",
     "Pixel (SNR)": "#b3b3b3",
 }
 """Compared methods (the keys of ``utils/runs.METHODS``). Zephyr is always the same blue."""

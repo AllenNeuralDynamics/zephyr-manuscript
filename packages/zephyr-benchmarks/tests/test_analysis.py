@@ -560,7 +560,7 @@ class ManifestTests(unittest.TestCase):
             ReportedRun(label="x", run="r", kind="facemap")
         with self.assertRaises(ValueError):
             ReportedRun(
-                label="x", run="r", kind="pixel", variant="pca/blind", head=True
+                label="x", run="r", kind="pixel", variant="snr/blind", head=True
             )
 
     def test_labels_are_distinct(self):

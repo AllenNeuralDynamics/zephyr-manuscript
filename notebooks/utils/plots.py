@@ -149,12 +149,14 @@ def prediction_panel(
             clip_on=False,
             transform=top.get_xaxis_transform(),
         )
-    top.set_ylabel("Respiration (z)")
+    top.set_ylabel("Respiration\n(z)")
     top.legend(loc="lower right", bbox_to_anchor=(1, 1.08), ncol=2)
     bottom.plot(tp[kp], prediction["onset"][kp], color=style.ONSET)
     bottom.set_ylim(0, 1.05)
     bottom.set_yticks([0, 1])
-    bottom.set_ylabel("Inhalation onset (p)")
+    # both labels on two lines: on one, each runs past its axes into the other's
+    bottom.set_ylabel("Inhalation\nonset (p)")
+    fig.align_ylabels([top, bottom])
     bottom.set_xlim(t0, t1)
     bottom.set_xlabel("Time (s)")
     return fig
@@ -645,7 +647,6 @@ def corpus_animals_panel(
 
 DISPLAY: dict[str, str] = {
     "Pixel (motion)": "Motion energy",
-    "Pixel (PCA)": "Pixel PCA",
     "Pixel (SNR)": "Pixel SNR",
 }
 """Method names as printed in the manuscript, where they differ from the run's."""
@@ -1623,6 +1624,8 @@ def _heat(a: Axes, heat: NDArray, extent=None) -> Any:
         va="center",
         fontsize=5,
         color="white",
+        # legible over a bright frame (a head plate) too
+        bbox={"facecolor": "black", "alpha": 0.6, "edgecolor": "none", "pad": 0.8},
     )
     return shown
 

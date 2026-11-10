@@ -1,36 +1,14 @@
 """Non-learned breathing traces from pixels alone -- the floor every method must clear.
 
-``pca``: per-pixel band-passed intensity, keeping the PCA component most concentrated
-in one in-band peak (Poh et al., 2010). ``snr``: pixels weighted by in-band variance
-fraction, signed to agree, averaged. ``motion``: motion energy, the mean absolute frame
-difference over the crop, band-passed (rectified: it follows how fast the face moves, not
-which way). None sees the thermistor; polarity is fixed afterwards by
+``snr``: pixels weighted by in-band variance fraction, signed to agree, averaged.
+``motion``: motion energy, the mean absolute frame difference over the crop, band-passed
+(rectified: it follows how fast the face moves, not which way). None sees the thermistor; polarity is fixed afterwards by
 :func:`.common.blind_polarity`.
 """
 
 import numpy as np
-from scipy.signal import welch
 
-from .common import BREATH_BAND_HZ, FS, bandpass
-
-
-def spectral_concentration(x: np.ndarray, fs: float = FS) -> float:
-    """Peak / total Welch power inside the breathing band."""
-    f, p = welch(x, fs=fs, nperseg=min(1024, len(x)))
-    band = (f >= BREATH_BAND_HZ[0]) & (f <= BREATH_BAND_HZ[1])
-    total = p[band].sum()
-    return float(p[band].max() / total) if total > 0 else 0.0
-
-
-def pixel_pca(frames: np.ndarray, fs: float = FS, n_components: int = 10) -> np.ndarray:
-    """``(T, H, W)`` gray -> the most rhythmic of the top principal components."""
-    x = frames.reshape(len(frames), -1).astype(np.float64)
-    x = bandpass(x - x.mean(0), fs)
-    _, evecs = np.linalg.eigh(x.T @ x)
-    top = evecs[:, ::-1][:, :n_components]
-    components = x @ top
-    scores = [spectral_concentration(components[:, k], fs) for k in range(top.shape[1])]
-    return components[:, int(np.argmax(scores))]
+from .common import FS, bandpass
 
 
 def motion_energy(frames: np.ndarray, fs: float = FS) -> np.ndarray:

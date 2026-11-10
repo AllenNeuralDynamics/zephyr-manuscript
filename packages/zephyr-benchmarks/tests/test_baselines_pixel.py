@@ -17,10 +17,6 @@ def video(rng, noise=1.0):
 
 
 class PixelTests(unittest.TestCase):
-    def test_pixel_pca_finds_breathing_component(self):
-        trace = pixel.pixel_pca(video(np.random.default_rng(0)), FS)
-        self.assertGreater(abs(np.corrcoef(trace, BREATH)[0, 1]), 0.9)
-
     def test_snr_weighted_finds_breathing_pixels(self):
         trace = pixel.snr_weighted(video(np.random.default_rng(1)), FS)
         self.assertGreater(abs(np.corrcoef(trace, BREATH)[0, 1]), 0.9)
@@ -37,6 +33,5 @@ class PixelTests(unittest.TestCase):
 
     def test_outputs_have_one_sample_per_frame(self):
         frames = video(np.random.default_rng(3))
-        self.assertEqual(pixel.pixel_pca(frames, FS).shape, (len(T),))
         self.assertEqual(pixel.snr_weighted(frames, FS).shape, (len(T),))
         self.assertEqual(pixel.motion_energy(frames, FS).shape, (len(T),))

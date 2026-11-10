@@ -40,12 +40,6 @@ kind = "pixel"
 variant = "motion/calibrated"
 
 [[method]]
-label = "Pixel (PCA)"
-run = "pixel-facemap-v3"
-kind = "pixel"
-variant = "pca/calibrated"
-
-[[method]]
 label = "Pixel (SNR)"
 run = "pixel-facemap-v3"
 kind = "pixel"
@@ -186,12 +180,6 @@ label = "Pixel (motion)"
 run = "pixel-facemap-cv-v3"
 kind = "pixel"
 variant = "motion/calibrated"
-
-[[cross_validation.method]]
-label = "Pixel (PCA)"
-run = "pixel-facemap-cv-v3"
-kind = "pixel"
-variant = "pca/calibrated"
 
 [[cross_validation.method]]
 label = "Pixel (SNR)"

@@ -42,7 +42,6 @@
 // of each score column (ties included) is bold.
 #let method-cite = (
   "Motion energy": (<stringer2019>, <musall2019>),
-  "Pixel PCA": (<poh2010>,),
   "Facemap": (<stringer2019>, <syeda2024>),
   "TS-CAN": (<liu2020>,),
   "PhysNet": (<yu2019>,),
@@ -809,7 +808,7 @@ thermistor, with the same settings (the 40-Hz low-pass does not apply at 60 Hz).
 == Benchmarked methods
 
 Every method read the same 96 × 96 gray crops on the 60-Hz grid and was scored by the same
-rules (Scoring). The three pixel methods compute a waveform from each clip's pixels with no
+rules (Scoring). The two pixel methods compute a waveform from each clip's pixels with no
 training, so the waveform has no set polarity or timing relative to respiration. Each waveform was
 therefore band-passed to the respiration band (1–15 Hz) and turned the right way up from its
 own shape: inhalation is shorter than exhalation, so a correct waveform falls faster than it
@@ -830,11 +829,6 @@ Note 2); none has an inhalation onset output, so their inhalations were found on
     midrule, [Motion energy], [#source("Motion energy")],
     [Motion energy: mean absolute
       difference between consecutive frames over the crop],
-    [Pixel PCA],
-    [#source("Pixel PCA")],
-
-    [Of the top #tbd[10] principal components of the
-      band-passed pixels, the one most concentrated in a single spectral peak],
     [Pixel SNR],
     [#source("Pixel SNR")],
 
@@ -1212,5 +1206,6 @@ batch, steps per epoch and learning rate are in @tab:nets #note[confirm how the 
     camera.* The #v("application.sessions") sessions of @fig:application, predicted from the
     face, side and front videos by the network trained on all three cameras. Each camera's
     quality-control scores over the 30-s windows of every session are shown beside
-    predictions that work and known failures, drawn as in #fig(<fig:trust>, "e").],
+    predictions that work and known failures, drawn as in #fig(<fig:trust>, "e"). The
+    held-out animals' windows are split by the camera of their clips.],
 ) <fig:application-cameras>
