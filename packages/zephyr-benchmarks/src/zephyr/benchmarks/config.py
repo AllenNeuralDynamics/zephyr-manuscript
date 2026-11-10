@@ -139,7 +139,8 @@ class QualitySet(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
     label: str
     reports: str
-    """The folder, under the report's quality-control root."""
+    """The folder, under the report's quality-control root (the manifest's ``root``
+    when it names the runs' own reports); a glob may name several."""
     role: Literal["working", "null", "application", "camera"]
     """A network that works there, a known failure, sessions without a thermistor, or
     the same sessions seen by another camera (``camera``, shown apart from them)."""
@@ -174,8 +175,9 @@ class ResultsManifest(BaseModel):
     """Where the runs were uploaded: an ``s3://`` prefix or a local folder;
     ``${ZEPHYR_BUCKET}`` in it is the paper's bucket (:mod:`.storage`)."""
     fold: str = "dev"
-    method: list[ReportedRun] = Field(min_length=1)
-    """The compared methods, in the order tables list them."""
+    method: list[ReportedRun] = []
+    """The compared methods on one split, in the order tables list them; empty when
+    every method is compared over the ``cross_validation`` folds."""
     variant: list[ReportedRun] = []
     """The first method trained differently, compared with it alone."""
     learning_curve: list[ReportedRun] = []
@@ -198,4 +200,6 @@ class ResultsManifest(BaseModel):
         labels = [r.label for r in (*self.method, *self.variant, *self.learning_curve)]
         if len(set(labels)) != len(labels):
             raise ValueError(f"repeated labels in {labels}")
+        if not self.method and self.cross_validation is None:
+            raise ValueError("a manifest compares methods: method or cross_validation")
         return self

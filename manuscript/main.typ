@@ -127,12 +127,27 @@
   place(top + right, dx: -1.5cm, dy: 0.6cm, text(size: 8pt, fill: luma(110))[Built from: #version])
 })
 
+// The authors and their contributions, from contributions.csv: one row per author, in
+// the order of the byline (the platform first, then alphabetical by surname), one column
+// per CRediT role (https://credit.niso.org). A cell is the author's share of the role,
+// from 0 (or empty) to 1: 1 if they had the role, 0 if not, or anything between.
+#let contributions = csv("contributions.csv")
+#let contribution-roles = contributions.first().slice(1)
+#let author-names = contributions.slice(1).map(row => row.first())
+#let contribution-level(cell) = {
+  let cell = cell.trim()
+  let x = if cell == "" { 0.0 } else { float(cell) }
+  assert(0 <= x and x <= 1, message: "contributions.csv: a cell is from 0 to 1, not " + cell)
+  x * 100
+}
+
 #show: preprint.with(
   title: [Validated inference of respiration from videography in mice],
   short-title: [Zephyr],
-  authors: ((name: "VrForaging Platform", affiliations: ("aind",)),),
+  authors: author-names.map(n => (name: n, affiliations: ("aind",))),
   affiliations: (
-    aind: [Allen Institute for Neural Dynamics, Seattle, WA, USA #note[authors]],
+    aind: [Allen Institute for Neural Dynamics, Seattle, WA, USA #note[authors] \
+      Authors after the VrForaging Platform are listed in alphabetical order.],
   ),
   abstract: [
     Rodents rely on olfaction to survive. Odors guide them to find food, avoid predators,
@@ -155,7 +170,7 @@ Sniffing is a fundamental form of active sensing. Each inhalation draws odors in
 timing of sniffing sets when olfactory information is sampled @kepecs2006 @verhagen2007
 @wachowiak2011. Respiration in mice is approximately 2–4 Hz at rest and up to 12–15 Hz
 during active sniffing @wesson2008. Olfactory bulb neurons respond at precise phases of this cycle
-@shusterman2011. Respiration also reflects an animal's internal state #tbd[(citation needed)] and changes with arousal and emotion @homma2008 @delnegro2018. Neurons
+@shusterman2011. Respiration also reflects an animal's internal state and changes with arousal and emotion @homma2008 @delnegro2018. Neurons
 of the breathing rhythm generator themselves promote arousal @yackle2017, and fear-conditioned mice
 breathe at a steady 4 Hz while they freeze @bagur2021. The time of inhalation is therefore a
 natural reference event for olfactory coding, and respiration would provide valuable state information in many
@@ -574,6 +589,17 @@ quality-control measures. The sessions of the dynamic-foraging experiment and th
 sessions without a thermistor, which are not part of the corpus, are released with their
 video and the network's predictions #note[repository URL, data DOI (DANDI or the Registry of
   Open Data), licence; confirm the corpus can be released].
+
+= Author contribution matrix
+// From contributions.csv (see author-names): its rows are the authors, its columns the
+// roles; the matrix wants one row per role.
+#contribution-matrix(
+  author-names.map(n => [#n]),
+  contribution-roles.map(r => [#r]),
+  contribution-roles
+    .enumerate()
+    .map(((j, _)) => contributions.slice(1).map(row => contribution-level(row.at(j + 1)))),
+)
 
 #pagebreak()
 #references(bibliography("references.bib"))

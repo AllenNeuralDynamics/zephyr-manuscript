@@ -1314,8 +1314,9 @@ def learning_curve_panel(
     ``animals``, ``metric``, ``mean``, ``low``, ``high`` and ``full`` (whether the run
     used every session of its animals); runs with all sessions are joined by a line,
     the others drawn open; each group in its colour from *colors*. Where several runs
-    share a size (draws of different animals), each is a small dot without interval
-    and the line passes through their mean."""
+    share a condition (draws of different animals or sessions), each is a small dot
+    without interval and the condition is drawn at their mean: on the line, or, for
+    runs with part of their sessions, as an open marker."""
     fig, ax = style.panel(width_mm, height_mm, [[m] for m in metrics], sharex=True)
     groups = list(dict.fromkeys(curve["group"]))
     for metric in metrics:
@@ -1323,15 +1324,35 @@ def learning_curve_panel(
         for group in groups:
             d = curve[(curve["metric"] == metric) & (curve["group"] == group)]
             color = colors[group]
-            repeated = d["full"] & (
-                d.groupby(["full", "animals"])["mean"].transform("size") > 1
-            )
-            draws = d[repeated]
-            a.plot(draws["animals"], draws["mean"], "o", color=color, ms=1.8)
+            repeated = d.groupby(["full", "animals"])["mean"].transform("size") > 1
+            for full in (True, False):
+                draws = d[repeated & (d["full"] == full)]
+                a.plot(
+                    draws["animals"] * (1 if full else 1.12),
+                    draws["mean"],
+                    "o",
+                    color=color,
+                    markerfacecolor=color if full else "white",
+                    ms=1.8,
+                    mew=0.5,
+                )
+                if not full and len(draws):
+                    means = draws.groupby("animals", as_index=False)["mean"].mean()
+                    a.plot(
+                        means["animals"] * 1.12,
+                        means["mean"],
+                        "o",
+                        color=color,
+                        markerfacecolor="white",
+                        ms=3,
+                        mew=0.6,
+                    )
             line = pd.concat(
                 [
                     d[d["full"] & ~repeated][["animals", "mean"]],
-                    draws.groupby("animals", as_index=False)["mean"].mean(),
+                    d[d["full"] & repeated]
+                    .groupby("animals", as_index=False)["mean"]
+                    .mean(),
                 ]
             ).sort_values("animals")
             a.plot(line["animals"], line["mean"], color=color, lw=0.9, label=group)

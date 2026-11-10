@@ -13,7 +13,7 @@ with app.setup:
     import numpy as np
     import pandas as pd
 
-    from utils import architecture, corpus_flow, plots, runs, style, values
+    from utils import architecture, corpus_flow, picks, plots, runs, style, values
     from zephyr.benchmarks import analysis
     from zephyr.corpus.config import DatasetSpec
 
@@ -34,10 +34,20 @@ def intro():
 
     Draws each data panel of the manuscript's figures at its printed size, as laid out
     in `{FIGURES / "layout.toml"}`, and writes it as `<figure>/<panel>.svg` beside the
-    figure's `.typ` file, which embeds the panels as vectors and adds their letters.
-    Runs come from the results manifest and clips from the local dataset copy
-    (`ZEPHYR_TEST_ROOT`); nothing is trained. Set `ZEPHYR_MANUSCRIPT_FIGURES` to write
-    elsewhere.
+    figure's `.typ` file, which embeds the panels as vectors and adds their letters,
+    and the tables and `values.toml` the text cites. It reads only the runs of the
+    results manifest (`{runs.MANIFEST.name}`), in the local copy `{runs.LOCAL_RUNS}`,
+    and what `analyses.py` made from them and the data (`{runs.ANALYSES}`): every score
+    is a run's own; nothing is trained, predicted, or read from the raw data here. Set
+    `ZEPHYR_ANALYSES` to read the analyses from elsewhere (before they are uploaded),
+    `ZEPHYR_MANUSCRIPT_FIGURES` to write elsewhere. The examples picked by hand are
+    `utils/picks.py`.
+
+    Run from a clean, committed working tree, as a script:
+
+    ```
+    uv run --locked --all-packages python notebooks/manuscript_figures.py
+    ```
     """)
     return
 
@@ -61,7 +71,7 @@ def example_clip():
     zephyr = runs.prediction(runs.SINGLE, stem)
     origin = float(zephyr["times"][0])
     # The excerpt of it shown in Fig. 1e: start (s from the clip's start) and length.
-    excerpt = (271.0, 4.0)
+    excerpt = picks.EXCERPT
     return excerpt, origin, stem, truth, zephyr
 
 
@@ -97,97 +107,18 @@ def task_window(
 
 
 @app.cell
-def fig1bc_data(dataset, spec):
-    from zephyr.config import ClipList as _ClipList
-    from zephyr.config import load as _load
-    from zephyr.events import detect as _detect
-
-    # Its correlation (0.855) and head inhale F1 (0.981) are nearest test A's medians
-    # (0.850, 0.977) among sessions of dataset version 1.0 or later (cv folds, seed 17,
-    # 2026-10-23); animal 863680 is new in cv_2.
-    _asset = "863680_2026-09-08_19-35-38_processed_2026-09-23_03-47-07"
-    _session = _asset.split("_processed")[0]
-    _name = runs.cv_name(runs.REFERENCE, "cv_2")
-
-    def _table(name: str) -> pd.DataFrame:
-        return pd.read_parquet(
-            runs.dataset_file(f"{_asset}/{name}.parquet", "s3://aind-open-data")
-        )
-
-    _speed = _table("position_velocity")["velocity"]
-    _licks = _table("licks")
-    lick_times = _licks.index[_licks["is_lick_onset"]].to_numpy()
-    _all = _table("sites")
-    _all = _all[(_all["site_label"] == "RewardSite") & _all["odor_onset_time"].notna()]
-    odor_sites = pd.DataFrame(
-        {
-            "odor": _all["odor_onset_time"],
-            "leave": _all["stop_time"],
-            "kind": [
-                plots.site_kind(bool(c), bool(r))
-                for c, r in zip(_all["has_choice"], _all["has_reward"], strict=True)
-            ],
-            "reward": _all["reward_onset_time"],
-        }
-    )
-    task_clips, task_truth = [], []
-    for _span in (1, 2):
-        _stem = f"{_session}_span{_span}_FaceCamera"
-        _p, _t = runs.prediction(_name, _stem), runs.truth(_stem)
-        _g = _p["times"]
-        task_clips.append(
-            pd.DataFrame(
-                {
-                    "time": _g,
-                    "speed": np.interp(_g, _speed.index.to_numpy(), _speed.to_numpy()),
-                    "video": analysis.breathing_rate(_p["head"], _g),
-                    "thermistor": analysis.breathing_rate(_t["inhale"], _g),
-                }
-            )
-        )
-        task_truth.append(pd.DataFrame({"time": _t["times"], "signal": _t["signal"]}))
-    # b: the thermistor over the whole session, its events found as the corpus finds
-    # them (the clip list's detector), on a 60-Hz grid
-    _raw = pd.read_parquet(
-        runs.dataset_file(f"raw/thermistor/{_session}.parquet", spec.root)
-    )
-    _events = _load(_ClipList, dataset / "clips.toml", check_files=False).events
-    _inhale = _detect(_events.method, _raw, params=_events.params).inhale
-    _g = np.arange(_raw["Time"].iloc[0], _raw["Time"].iloc[-1], 1 / 60)
-    task_session = pd.DataFrame(
-        {
-            "time": _g,
-            "speed": np.interp(_g, _speed.index.to_numpy(), _speed.to_numpy()),
-            "rate": analysis.breathing_rate(_inhale, _g),
-        }
-    )
-    task_thermistor_hz = 1 / float(np.median(np.diff(_raw["Time"])))
-    _lags = np.arange(-2.0, 5.0 + 1e-9, 1 / 60)
-    _inside = odor_sites[
-        odor_sites["odor"].between(_g[0] - _lags[0], _g[-1] - _lags[-1])
-    ]
-    _parts = []
-    for (_site, _signal), _group in (
-        ((k, s), g) for k, g in _inside.groupby("kind") for s in ("rate", "speed")
-    ):
-        _x = analysis.event_aligned(
-            _g, task_session[_signal].to_numpy(), _group["odor"].to_numpy(), _lags
-        )
-        _low, _high = analysis.bootstrap_mean(_x)
-        _parts.append(
-            pd.DataFrame(
-                {
-                    "site": _site,
-                    "signal": _signal,
-                    "lag": _lags,
-                    "mean": np.nanmean(_x, 0),
-                    "low": _low,
-                    "high": _high,
-                    "n": len(_x),
-                }
-            )
-        )
-    task_aligned = pd.concat(_parts, ignore_index=True)
+def fig1bc_data():
+    # The session of picks.TASK_ASSET (the task analysis): its behaviour, its two clips
+    # predicted by the fold that holds the animal out, and its whole thermistor (its
+    # events found as the corpus finds them, on a 60-Hz grid).
+    _task = runs.task()
+    lick_times = _task["licks"]["time"].to_numpy()
+    odor_sites = _task["sites"]
+    task_clips = [_task["clip1"], _task["clip2"]]
+    task_truth = [_task["truth1"], _task["truth2"]]
+    task_session = _task["session"].drop(columns="thermistor_hz")
+    task_thermistor_hz = float(_task["session"]["thermistor_hz"].iloc[0])
+    task_aligned = _task["aligned"]
     return (
         lick_times,
         odor_sites,
@@ -253,16 +184,15 @@ def fig1d_md():
 
 
 @app.cell
-def fig1d(stem, truth):
-    _frame_t, _frames = runs.gray(stem)
-    _i = int(np.searchsorted(_frame_t, truth["inhale"][len(truth["inhale"]) // 2]))
+def fig1d(stem):
+    # Three consecutive crops of the example clip at its middle inhale (the truth
+    # analysis), through the checkpoint's own layers.
     _net = runs.network(runs.SINGLE)[0]
-    _hz = runs.clip(stem)[1].output_fs
     _svg = architecture.network_svg(
         _net,
-        [np.asarray(_frames[j, 0]) for j in (_i - 1, _i, _i + 1)],
+        runs.inhale_frames(stem),
         *size("fig1", "d"),
-        _hz,
+        runs.output_fs(stem),
     )
     (FIGURES / "fig1" / "d.svg").write_text(_svg, encoding="utf8")
     mo.Html(_svg)
@@ -305,15 +235,15 @@ def fig2_md():
     mo.md("""
     ## Fig. 2: the corpus
 
-    From the local dataset copy (`ZEPHYR_TEST_ROOT`/dataset) and the corpus spec:
-    the selection flow, the breathing-rate mix and the split.
+    From the corpus's own tables (the corpus analysis) and its spec: the selection
+    flow, the breathing-rate mix and the split.
     """)
     return
 
 
 @app.cell
 def fig2_data():
-    dataset = runs.root() / "dataset"
+    dataset = runs.corpus_root()
     spec = DatasetSpec.model_validate(
         tomllib.loads(
             (
@@ -444,7 +374,7 @@ def fig3_methods():
     methods = runs.available(order)
     # The unit of comparison is an animal on one rig (Methods, Statistics): every
     # score is averaged within a unit, and units are what is counted and resampled.
-    _folds = pd.read_parquet(runs.root() / "dataset" / "raw" / "folds.parquet")
+    _folds = pd.read_parquet(runs.dataset_raw("folds.parquet"))
     _rig = dict(zip(_folds["session_id"], _folds["rig"], strict=True))
     _subject = dict(zip(_folds["session_id"], _folds["subject_id"], strict=True))
 
@@ -463,36 +393,31 @@ def fig3_methods():
         )
         return analysis.rate_share(units, bins=analysis.RATE_BINS_HZ[1:])
 
-    recordings = with_unit(runs.scores(methods, "per_recording"))
     test_a = runs.SETS["test_a"]
-    return methods, rate_share, recordings, test_a, with_unit
+    return methods, rate_share, test_a, with_unit
 
 
 @app.cell
-def fig3_folds(methods, recordings, with_unit):
-    # Every summary is over folds (Methods, Statistics): the five cross-validation folds
-    # for the methods retrained on them, the published split ("published", one split,
-    # no interval) for the others.
+def fig3_folds(methods, with_unit):
+    # Every summary is over the five cross-validation folds (Methods, Statistics):
+    # every method was retrained on each.
     cv_folds = runs.RESULTS.cross_validation.folds
     _cv = with_unit(runs.cv_scores("per_recording"))
     cv_methods = [m for m in methods if m in set(_cv["method"])]
-    by_fold = pd.concat(
-        [
-            _cv[_cv["method"].isin(cv_methods)],
-            recordings[~recordings["method"].isin(cv_methods)].assign(fold="published"),
-        ],
-        ignore_index=True,
-    )
+    by_fold = _cv[_cv["method"].isin(cv_methods)].reset_index(drop=True)
 
     def fold_tables(names, kinds=("breaths", "false_positives", "lags", "windows")):
-        """The analysis tables of each method on each of its folds, labelled by the
-        method and a ``fold`` column."""
+        """The analysis tables of each method on each fold (the tables analysis),
+        labelled by the method and a ``fold`` column; a run not finished is left out,
+        as its scores are (``runs.cv_scores``)."""
         out = {k: [] for k in kinds}
         for n in names:
-            for f in cv_folds if n in cv_methods else [None]:
-                t = runs.tables(runs.cv_name(n, f) if f else n)
+            for f in cv_folds:
+                if runs.evaluation(runs.cv_name(n, f)) is None:
+                    continue
+                t = runs.tables(runs.cv_name(n, f))
                 for k in kinds:
-                    out[k].append(t[k].assign(method=n, fold=f or "published"))
+                    out[k].append(t[k].assign(method=n, fold=f))
         return {k: pd.concat(v, ignore_index=True) for k, v in out.items()}
 
     return by_fold, cv_methods, fold_tables
@@ -500,16 +425,11 @@ def fig3_folds(methods, recordings, with_unit):
 
 @app.cell
 def fig3a(cv_methods, methods):
-    # One clip of an animal held out by fold cv_0 and by the published split, so the
-    # methods without cross-validation runs (published split, for now) can be shown:
-    # the clip whose correlation, averaged over the methods, is nearest the median of
-    # such clips; 6 s of it where the thermistor's breathing rate changes most.
+    # One clip of an animal held out by fold cv_0: the clip whose correlation, averaged
+    # over the methods, is nearest the median of its new-animal clips; 6 s of it where
+    # the thermistor's breathing rate changes most.
     _fold = runs.RUNS[runs.SINGLE].fold
-    _names = {
-        n: runs.cv_name(n, _fold) if n in cv_methods else n
-        for n in methods
-        if n in cv_methods or n in ("PhysFormer", "RhythmFormer")
-    }
+    _names = {n: runs.cv_name(n, _fold) for n in methods if n in cv_methods}
     _all = runs.scores(list(_names.values())).query("set == @runs.SETS['test_a']")
     _all = _all[_all["stem"].map(runs.is_local)]
     _held = _all.groupby("stem")["method"].nunique() == len(_names)
@@ -578,7 +498,7 @@ def fig3cde(fold_tables, rate_share, test_a):
         .reset_index(),
         on=["method", "bin"],
     )
-    _cv_breaths = whole["breaths"][whole["breaths"]["fold"] != "published"]
+    _cv_breaths = whole["breaths"]
     fig3c = plots.rate_band_panel(
         *size("fig3", "c"),
         _rate,
@@ -587,7 +507,7 @@ def fig3cde(fold_tables, rate_share, test_a):
         legend=False,  # colours as in b, where every method is named
     )
     plots.save_panel(fig3c, FIGURES / "fig3" / "c.svg")
-    _cv = {k: v[v["fold"] != "published"] for k, v in whole.items()}
+    _cv = whole
     _zephyr = _cv["lags"][_cv["lags"]["method"] == "Zephyr"]
     fig3d = plots.lag_rate_panel(*size("fig3", "d"), _zephyr)
     plots.save_panel(fig3d, FIGURES / "fig3" / "d.svg")
@@ -597,10 +517,6 @@ def fig3cde(fold_tables, rate_share, test_a):
     _f1 = _rate.set_index(["method", "bin"])["mean"]
     _breaths = _cv["breaths"][_cv["breaths"]["method"] == "Zephyr"]
     _in_band = _breaths["rate_hz"].between(2, 15, inclusive="left")
-    _pub = whole["breaths"][
-        (whole["breaths"]["fold"] == "published")
-        & (whole["breaths"]["method"] == "PhysFormer")
-    ]
     _ms = _zephyr.assign(ms=1000 * _zephyr["lag_s"], method="Zephyr")
 
     def _lag_ci(lags):
@@ -627,9 +543,6 @@ def fig3cde(fold_tables, rate_share, test_a):
         "physnet_f1_fast": values.num(_f1.loc[("PhysNet", "12-15")]),
         "physformer_f1_slow": values.num(_f1.loc[("PhysFormer", "2-3")]),
         "breaths": values.count(_in_band.sum()),
-        "breaths_published": values.count(
-            _pub["rate_hz"].between(2, 15, inclusive="left").sum()
-        ),
         "lags": values.count(len(_zephyr)),
         "lag": values.num(_lag["mean"], 1),
         "lag_ci": values.span(_lag["low"], _lag["high"], 1),
@@ -658,7 +571,7 @@ def figs5(fold_tables, test_a):
     # cycle; the spread of its lags in ms and as a share of the cycle; breaths found
     # late (beyond 25 ms) against not found. Mean over folds with its interval.
     _t = fold_tables(["Zephyr"], ("breaths", "lags"))
-    _t = {k: v.query("set == @test_a and fold != 'published'") for k, v in _t.items()}
+    _t = {k: v.query("set == @test_a") for k, v in _t.items()}
     _timing = analysis.timing_by_rate(
         _t["lags"], _t["breaths"], analysis.RATE_BINS_HZ[1:]
     )
@@ -708,31 +621,9 @@ def figs5(fold_tables, test_a):
         _figs.append(_fig)
     # e: inhalations the corpus detector adds, per breath of its labels, when its
     # prominence fraction is lowered from 0.2, on the thermistor of every held-out clip
-    # (cached: it reads each clip's raw thermistor).
-    _path = runs.PREDICTIONS / "label-added-prominence.parquet"
-    _settings = {0.1: "0.1", 0.05: "0.05"}
-    if _path.is_file():
-        _added = pd.read_parquet(_path)
-    else:
-        _clips = (
-            runs.cv_scores("clips")
-            .query("method == 'Zephyr' and set == @test_a")
-            .drop_duplicates("stem")
-        )
-        _parts = []
-        for _stem, _fold in zip(_clips["stem"], _clips["fold"], strict=True):
-            if not runs.is_local(_stem):
-                continue
-            _truth = runs.truth(_stem)
-            for _frac, _label in _settings.items():
-                _parts.append(
-                    analysis.added_inhales(
-                        _truth["inhale"],
-                        analysis.redetect(_truth, prominence_frac=_frac),
-                    ).assign(fold=_fold, setting=_label)
-                )
-        _added = pd.concat(_parts, ignore_index=True)
-        _added.to_parquet(_path)
+    # (the prominence analysis).
+    _added = runs.label_added()
+    _settings = {f: f"{f:g}" for f in runs.PROMINENCE}
     label_added = analysis.across_folds(
         analysis.added_by_rate(_added, analysis.RATE_BINS_HZ[1:]),
         "added",
@@ -769,124 +660,12 @@ def figs5(fold_tables, test_a):
 
 
 @app.cell
-def saliency_data(test_a, with_unit):
-    # Supplementary Fig. 6. The face network of each fold on its new animals, computed
-    # once and cached (it runs the networks on the GPU): for every unit, the clip
-    # nearest the unit's median correlation, two 8.5-s windows (analysis.clip_saliency).
-    # The side and front networks (fold cv_0, the only one they have) on the same
-    # spans: their clips are each run's own held-out list (its config.json), their
-    # videos downloaded under the dataset copy's root and preprocessed as zephyr does.
-    _path = runs.PREDICTIONS / "saliency-face-cv.npz"
-    _bins = np.arange(-1.0, 1.0 + 1e-9, 1 / 60) - 1 / 120
-    _dev = runs.device()
-
-    def _picked(name):
-        c = runs.scores([name]).query("set == @test_a")
-        c = with_unit(c[c["stem"].map(runs.is_local)])
-        median = c.groupby("unit")["correlation"].transform("median")
-        typical = (c["correlation"] - median).abs()
-        return c.loc[typical.groupby(c["unit"]).idxmin()].set_index("unit")["stem"]
-
-    def _camera_saliency(label, fold, spans, bins):
-        """The maps of camera network *label* of *fold* on its own clips of *spans*
-        (span -> unit), with each clip's whole first frame and its box."""
-        import cv2 as _cv2
-
-        name = runs.cv_name(label, fold)
-        model, mean, std, _, _ = runs.network(name)
-        model = model.to(_dev).float().eval()
-        control = analysis.randomized(model)
-        keys = ("occlusion", "trace", "gradient", "random", "profile")
-        rows = {k: [] for k in (*keys, "crop", "frame", "box")}
-        units, stems = [], []
-        for entry, box, size in runs.held_out_entries(name, spans):
-            found = analysis.clip_saliency(
-                model,
-                control,
-                entry,
-                mean,
-                std,
-                analysis.truth(entry)["inhale"],
-                bins,
-                device=_dev,
-            )
-            for k in keys:
-                rows[k].append(found[k])
-            frames = np.load(entry.frames, mmap_mode="r")
-            rows["crop"].append(
-                np.asarray(frames[:: max(1, len(frames) // 50), 0]).mean(0)
-            )
-            video = _cv2.VideoCapture(str(entry.video))
-            _, image = video.read()
-            video.release()
-            gray = _cv2.cvtColor(image, _cv2.COLOR_BGR2GRAY)
-            rows["frame"].append(_cv2.resize(gray, size))
-            rows["box"].append(box)
-            stem = Path(str(entry.video)).stem
-            units.append(spans[stem.rsplit("_", 1)[0]])
-            stems.append(stem)
-        out = {k: np.array(v) for k, v in rows.items()}
-        return out | {
-            "unit": np.array(units),
-            "fold": np.array([fold] * len(units)),
-            "stem": np.array(stems),
-            "offset_s": (bins[:-1] + bins[1:]) / 2,
-        }
-
-    if _path.is_file():
-        _face = dict(np.load(_path, allow_pickle=True))
-    else:
-        _keys = ("occlusion", "trace", "gradient", "random", "crop", "profile")
-        _rows = {k: [] for k in _keys}
-        _units, _of, _stems = [], [], []
-        for _f in runs.RESULTS.cross_validation.folds:
-            _name = runs.cv_name(runs.REFERENCE, _f)
-            _model, _mean, _std, _, _ = runs.network(_name)
-            _model = _model.to(_dev).float().eval()
-            _control = analysis.randomized(_model)
-            for _unit, _stem in _picked(_name).items():
-                _found = analysis.clip_saliency(
-                    _model,
-                    _control,
-                    runs.truth_entry(_stem),
-                    _mean,
-                    _std,
-                    runs.truth(_stem)["inhale"],
-                    _bins,
-                    device=_dev,
-                )
-                for _k in ("occlusion", "trace", "gradient", "random", "profile"):
-                    _rows[_k].append(_found[_k])
-                _t, _frames = runs.gray(_stem)
-                _every = max(1, len(_t) // 50)
-                _rows["crop"].append(np.asarray(_frames[::_every, 0]).mean(axis=0))
-                _units.append(_unit)
-                _of.append(_f)
-                _stems.append(_stem)
-        _face = {k: np.array(v) for k, v in _rows.items()}
-        _face |= {
-            "unit": np.array(_units),
-            "fold": np.array(_of),
-            "stem": np.array(_stems),
-            "offset_s": (_bins[:-1] + _bins[1:]) / 2,
-        }
-        np.savez(_path, **_face)
-    saliency = {"Face camera": _face}
-    _fold = "cv_0"
-    _spans = {
-        str(s).rsplit("_", 1)[0]: str(u)
-        for s, u, f in zip(_face["stem"], _face["unit"], _face["fold"], strict=True)
-        if f == _fold
-    }
-    for _camera in ("side", "front"):
-        _label = f"{_camera.title()} camera"
-        _other = runs.PREDICTIONS / f"saliency-{_camera}-{_fold}.npz"
-        if not _other.is_file():
-            np.savez(
-                _other,
-                **_camera_saliency(f"Zephyr, {_camera} camera", _fold, _spans, _bins),
-            )
-        saliency[_label] = dict(np.load(_other, allow_pickle=True))
+def saliency_data():
+    # Supplementary Fig. 6 (the saliency analysis). The face network of each fold on
+    # its new animals: for every unit, the clip nearest the unit's median correlation,
+    # two 8.5-s windows (analysis.clip_saliency). The side and front networks (fold
+    # cv_0) on the same spans, their clips each run's own held-out list.
+    saliency = runs.saliency()
     return (saliency,)
 
 
@@ -897,7 +676,7 @@ def figs6(saliency):
     # every camera, with a clean side view); b: maps averaged over the units of each
     # camera, over their mean crop; c: how each inhale's gradient spreads over its
     # frames.
-    _session = "behavior_789907_2025-10-31_18-19-45"
+    _session = picks.SALIENCY_SESSION
 
     def _unit_of(found):
         same = [
@@ -971,23 +750,20 @@ def figs6(saliency):
 @app.cell
 def figs7(with_unit):
     # Supplementary Fig. 7: the all-camera network on a different behavioural task (dynamic
-    # foraging, zephyr-df-dataset), scored on its held-out animal before and after it
-    # was refined there. a: the experiment's two views of the held-out animal with their
-    # crops; b: a few seconds of one of its clips from both views, the thermistor and
-    # the refined network; c: each session's scores before and after; d: what refining
-    # cost on the VR test sets of cv_0, after minus before per animal x rig unit.
-    import cv2 as _cv2
-
-    from zephyr.evaluate import head_event_indices as _head_events
-
+    # foraging, zephyr-df-dataset), scored on each left-out animal before and after it
+    # was refined on the other two (one run per animal, pooled). a: the experiment's two
+    # views of a left-out animal with their crops; b: a few seconds of one of its clips
+    # from both views, the thermistor and the refined network; c: each session's scores
+    # before and after; d: what refining cost on the VR test sets of cv_0, after minus
+    # before per animal x rig unit (the three refined networks pooled).
     _parent = runs.cv_name("Zephyr, all cameras", "cv_0")
     _on_df, _refined = (
-        "Zephyr, all cameras, on DF",
-        "Zephyr, all cameras, refined on DF",
+        runs.pooled("Zephyr, all cameras, on DF"),
+        runs.pooled("Zephyr, all cameras, refined on DF"),
     )
     _cameras = {"side_camera_right": "Side view", "bottom_camera": "Bottom view"}
-    _before = runs.clip_scores(_on_df)
-    _after = runs.clip_scores(_refined)
+    _before = pd.concat([runs.clip_scores(n) for n in _on_df], ignore_index=True)
+    _after = pd.concat([runs.clip_scores(n) for n in _refined], ignore_index=True)
     _df = _after[_after["set"] == "df_test_a"]
     _metrics = ["correlation", "inhale"]
 
@@ -1010,7 +786,7 @@ def figs7(with_unit):
 
     # d: the VR test sets, every camera, after minus before per unit (paired
     # bootstrap); the animal from the corpus's session metadata.
-    _folds = pd.read_parquet(runs.root() / "dataset" / "raw" / "folds.parquet")
+    _folds = pd.read_parquet(runs.dataset_raw("folds.parquet"))
     _subject = dict(
         zip(_folds["session_id"], _folds["subject_id"].astype(str), strict=True)
     )
@@ -1057,28 +833,20 @@ def figs7(with_unit):
     # nearest the median of the held-out animal's sessions; its first span.
     _by_session = _df.groupby("session")["correlation"].mean()
     _session = (_by_session - _by_session.median()).abs().idxmin()
-    _entries = runs.df_entries()
-    _threshold = runs.head_threshold(_refined)
     _views, _rows = {}, {}
     for _camera, _label in _cameras.items():
         _stem = f"{_session}_span1_{_camera}"
-        _entry, _box = _entries[_stem]
-        _image = _cv2.imread(
-            str(runs.DF_ROOT / "thumbnails" / f"{_session}_{_camera}.png"),
-            _cv2.IMREAD_GRAYSCALE,
-        )
-        _scale = _image.shape[1] / 360  # boxes are on the 360 x 270 frame
-        _views[_label] = (_image, tuple(v * _scale for v in _box))
-        _truth = analysis.truth(_entry)
-        _signal, _onset = runs._saved(_refined, _entry, _stem)
-        _times = _truth["times"]
-        _n = min(len(_times), len(_signal))
+        _views[_label] = (runs.thumbnail(_stem), runs.box(_stem))
+        _truth = runs.truth(_stem)
+        _p = runs.prediction(runs.run_of(_refined, _stem), _stem)
+        _times = _p["times"]
+        _n = len(_times)
         _rows[_label] = {
-            "times": _times[:_n],
+            "times": _times,
             "truth": _truth["signal"][:_n],
             "truth_inhale": _truth["inhale"],
-            "signal": _signal[:_n],
-            "head": _times[_head_events(_onset[:_n], _times[:_n], _threshold)],
+            "signal": _p["signal"],
+            "head": _p["head"],
             # 12 s around the clip's middle, in s from its start
             "start": round(float(_times[_n // 2] - _times[0]) - 6.0),
         }
@@ -1111,8 +879,16 @@ def figs7(with_unit):
             for k, m in (("f1", "inhale"), ("r", "correlation"))
             for s in _vr_sets
         },
-        "threshold_after": values.num(_threshold, 1),
-        "threshold_before": values.num(runs.head_threshold(_on_df), 1),
+        "threshold_after": values.span(
+            min(map(runs.head_threshold, _refined)),
+            max(map(runs.head_threshold, _refined)),
+            1,
+        ),
+        "threshold_before": values.span(
+            min(map(runs.head_threshold, _on_df)),
+            max(map(runs.head_threshold, _on_df)),
+            1,
+        ),
     }
     mo.vstack(
         [
@@ -1203,9 +979,9 @@ def fig7(qc_windows):
     )
     plots.save_panel(fig_5a, FIGURES / "fig7" / "a.svg")
     # Frames of the window, s from its start (frame i at i / the clip's frame rate, as
-    # the prediction), chosen by eye: the face at rest, two paw strokes over the snout
-    # and a lick.
-    _shots_s = [3.0, 6.45, 8.9, 10.5]
+    # the prediction), chosen by eye (picks.APPLICATION_SHOTS_S; the application
+    # analysis extracted them).
+    _shots_s = list(picks.APPLICATION_SHOTS_S)
     _w = _marked.iloc[0]
     # the 10 s of the window centred on the frames, in s from the window's start
     _shown_s = 10.0
@@ -1394,13 +1170,10 @@ def figs9(qc_windows):
 
 
 @app.cell
-def table1(
-    by_fold, cv_methods, fold_tables, methods, on_cpu, recordings, test_a, timing
-):
+def table1(by_fold, cv_methods, fold_tables, methods, on_cpu, test_a, timing):
     # Table 1 (benchmark, new animals) and Supplementary Table (new sessions of known
     # animals, test set B): per method, each score averaged within each unit, then over
-    # the units of a fold, then over folds (mean and 95% interval; methods without
-    # cross-validation runs, the published split alone). Rate metrics from 10-s
+    # the units of a fold, then over folds (mean and 95% interval). Rate metrics from 10-s
     # windows. Written as CSV for main.typ.
     _windows_all = fold_tables(methods, ("windows",))["windows"]
 
@@ -1487,16 +1260,8 @@ def table1(
     _pixels = ["Pixel (motion)", "Pixel (PCA)", "Pixel (SNR)"]
     _others = ["TS-CAN", "RhythmFormer", "PhysFormer"]
     _dsp = analysis.fold_scores(_a, "inhale_f1", by=["method"]).set_index("method")
-    _published = analysis.fold_scores(
-        recordings[recordings["set"] == test_a].assign(fold="published"),
-        "correlation",
-        by=["method"],
-    ).set_index("method")
-    _pub_a = recordings[(recordings["set"] == test_a) & (recordings["method"] == _ref)]
     v_fig3 = {
         "folds": values.count(cv_counts["folds"]),
-        "published_units": values.count(_pub_a["unit"].nunique()),
-        "published_animals": values.count(_pub_a["subject"].nunique()),
         "units_a": values.count(cv_counts["units"]),
         "animals_a": values.count(cv_counts["animals"]),
         "units_b": values.count(cv_counts_b["units"]),
@@ -1517,8 +1282,6 @@ def table1(
         "others_r": values.span(
             _r.loc[_others, "mean"].min(), _r.loc[_others, "mean"].max()
         ),
-        "published_r": values.num(_published.loc[_ref, "mean"]),
-        "published_physnet_r": values.num(_published.loc["PhysNet", "mean"]),
         "dsp_f1": values.num(_dsp.loc[_ref, "mean"]),
         "exhale_f1": values.num(_summary["exhale_f1"].loc[_ref, "mean"]),
         "mae_units": values.num(_summary["MAE (Hz)"].loc[_ref, "mean"], 1),
@@ -1620,7 +1383,7 @@ def fig4ab(by_fold, test_a):
     plots.save_panel(fig4a, FIGURES / "fig4" / "a.svg")
     fig4b = plots.animals_panel(
         *size("fig4", "b"),
-        by_fold[by_fold["fold"] != "published"],
+        by_fold,
         ["Zephyr"],
         "inhale",
         test_a,
@@ -1677,9 +1440,8 @@ def fig5a(test_a, with_unit):
     # Fig. 5a: Zephyr trained on fewer animals (all their sessions), and on fewer
     # sessions of all its animals (open), on the cross-validation fold those runs were
     # trained on, against Zephyr on that fold; scored per unit on its new animals (test
-    # A), the same units for every run. The 2-animal draws were trained on the published
-    # split and scored on this fold's new animals, none of which they trained on; they
-    # are drawn as dots, the line through their mean.
+    # A), the same units for every run. Several draws of one size are drawn as dots,
+    # the line through their mean.
     _size = runs.available(runs.LEARNING_CURVE)
 
     def _cv_fold(name):
@@ -1739,61 +1501,66 @@ def fig5a(test_a, with_unit):
     _repeated = _sizes.map(_sizes.value_counts()) > 1
     _draws = _sizes[_repeated & (_sizes < _sizes[_ref])].index
     learning.loc[learning["method"].isin(_draws), "full"] = True
-    # The text's numbers: runs found by what they trained on, not by their labels.
+    # The text's numbers, per condition: a condition is the runs of one size (its
+    # draws), and each number is the mean over them. Runs are found by what they
+    # trained on, not by their labels.
     _f1 = learning[learning["metric"] == "inhale"].set_index("method")
     _r = learning[learning["metric"] == "correlation"].set_index("method")
-    _draw = _f1.index.isin(_draws)
-    _d = _f1[_draw].sort_index()
-    _full = _f1[_f1["full"] & ~_draw].sort_values("animals")
-    _smallest = _full.index[0]  # fewest animals
-    _partial = _f1[~_f1["full"] & ~_draw].index[
-        0
-    ]  # all animals, part of their sessions
-    # The fewest animals against all, paired on the units both were scored on.
-    _pair = _recs[(_recs["set"] == test_a) & _recs["method"].isin([_ref, _smallest])]
+    # fewer animals, all their sessions: one condition per number of animals
+    _sized = _f1[_f1["full"] & (_f1.index != _ref)]
+    _counts = sorted(_sized["animals"].unique())
+    _of = {n: sorted(_sized.index[_sized["animals"] == n]) for n in _counts}
+    _fewest = _of[_counts[0]]  # the draws of the fewest animals
+    _partial = sorted(_f1.index[~_f1["full"]])  # all animals, part of their sessions
+
+    def _mean(table, names, column="mean"):
+        return table.loc[names, column].mean()
+
+    def _listing(xs, show):
+        xs = list(xs)
+        return ", ".join(show(x) for x in xs[:-1]) + " and " + show(xs[-1])
+
+    # The fewest animals against all, paired on the units both were scored on: each
+    # unit's score averaged over the draws.
+    _pair = _recs[(_recs["set"] == test_a) & _recs["method"].isin([_ref, *_fewest])]
+    _pair = _pair.assign(
+        method=_pair["method"].where(_pair["method"] == _ref, "fewest")
+    )
     _shared = set.intersection(
-        *(set(_pair.loc[_pair["method"] == n, "unit"]) for n in (_ref, _smallest))
+        *(set(_pair.loc[_pair["method"] == n, "unit"]) for n in (_ref, "fewest"))
     )
     _diff = (
         analysis.bootstrap(
             _pair[_pair["unit"].isin(_shared)], "inhale", reference=_ref, unit="unit"
         )
         .set_index("method")
-        .loc[_smallest]
+        .loc["fewest"]
     )
-    _nested = _full[_full.index != _ref]
     v_size = {
-        "animals": ", ".join(values.count(n) for n in _nested["animals"].iloc[:-1])
-        + " and "
-        + values.count(_nested["animals"].iloc[-1]),
-        "sessions": ", ".join(values.count(n) for n in _nested["sessions"].iloc[:-1])
-        + " and "
-        + values.count(_nested["sessions"].iloc[-1]),
+        "animals": _listing(_counts, values.count),
+        "sessions": _listing(
+            (round(_mean(_f1, _of[n], "sessions")) for n in _counts), values.count
+        ),
         "all_animals": values.count(_f1.loc[_ref, "animals"]),
         "all_sessions": values.count(_f1.loc[_ref, "sessions"]),
-        "nested_f1": ", ".join(
-            values.num(x) for x in _f1.loc[_nested.index, "mean"].iloc[:-1]
-        )
-        + " and "
-        + values.num(_f1.loc[_nested.index[-1], "mean"]),
-        "fewest": values.count(_f1.loc[_smallest, "animals"]),
-        "fewest_f1": values.num(_f1.loc[_smallest, "mean"]),
-        "fewest_r": values.num(_r.loc[_smallest, "mean"]),
+        "nested_f1": _listing((_mean(_f1, _of[n]) for n in _counts), values.num),
+        "fewest": values.count(_counts[0]),
+        "fewest_f1": values.num(_mean(_f1, _fewest)),
+        "fewest_r": values.num(_mean(_r, _fewest)),
         "f1": values.num(_f1.loc[_ref, "mean"]),
         "r": values.num(_r.loc[_ref, "mean"]),
         "diff": values.num(_diff[f"{_ref} minus"]),
         "diff_ci": values.span(_diff["diff low"], _diff["diff high"]),
-        "partial_sessions": values.count(_f1.loc[_partial, "sessions"]),
-        "partial_f1": values.num(_f1.loc[_partial, "mean"]),
-        "partial_r": values.num(_r.loc[_partial, "mean"]),
-        "draw_sessions": values.span(_d["sessions"].min(), _d["sessions"].max(), 0),
-        "draws_f1": ", ".join(values.num(x) for x in _d["mean"].iloc[:-1])
-        + " and "
-        + values.num(_d["mean"].iloc[-1]),
-        "draws_r": ", ".join(values.num(x) for x in _r.loc[_d.index, "mean"].iloc[:-1])
-        + " and "
-        + values.num(_r.loc[_d.index[-1], "mean"]),
-        "draw_animals": values.count(_d["animals"].iloc[0]),
+        "partial_sessions": values.count(round(_mean(_f1, _partial, "sessions"))),
+        "partial_f1": values.num(_mean(_f1, _partial)),
+        "partial_r": values.num(_mean(_r, _partial)),
+        "draw_sessions": values.span(
+            _f1.loc[_fewest, "sessions"].min(), _f1.loc[_fewest, "sessions"].max(), 0
+        ),
+        "draws_f1": _listing(_f1.loc[_fewest, "mean"], values.num),
+        "draws_r": _listing(_r.loc[_fewest, "mean"], values.num),
+        "draw_animals": values.count(_counts[0]),
+        "draws": values.count(len(_fewest)),
         "fold": _ref.split(" | ")[-1],
         "units": values.count(_f1.loc[_ref, "units"]),
     }
@@ -1863,7 +1630,9 @@ def fig4df(test_a):
     _shown = []
     for _panel, _row in _cases.items():
         _stem = _row.name
-        _errors = runs.errors(_one, _stem)
+        # not .query("stem == @_stem"): marimo renames a cell's "_" names
+        _errors = runs.set_errors(_one, test_a)
+        _errors = _errors[_errors["stem"] == _stem]
         _p = runs.prediction(_one, _stem)
         _origin = float(_p["times"][0])
         _truth = runs.truth(_stem)
@@ -1910,13 +1679,14 @@ def fig4df(test_a):
 
 @app.cell
 def fig6_md():
-    mo.md(f"""
+    mo.md("""
     ## Fig. 6: scores of predictions without a thermistor
 
-    The quality-control scores the results manifest's `[quality]` names, from
-    `{runs.QC_ROOT}`: the all-camera network's validation windows (its reference),
-    sets where it works, and known failures; made with `zephyr quality-control
-    reference` and `run`, and the noise null with `zephyr-benchmarks probe`.
+    The quality-control scores the results manifest's `[quality]` names, joined with
+    their truth by the quality analysis: the all-camera network's validation windows
+    (its reference), sets where it works, and known failures; made with `zephyr
+    quality-control reference` and `run`, and the noise null with `zephyr-benchmarks
+    probe`.
     """)
     return
 
@@ -1972,8 +1742,7 @@ def fig6efg():
     _f1 = qc_windows[qc_windows["set"] == _after].groupby("stem")["truth_inhale_f1"]
     _f1 = _f1.mean()
     _stem = (_f1 - _f1.median()).abs().idxmin()
-    _entry, _ = runs.df_entries()[_stem]
-    _truth = analysis.truth(_entry)
+    _truth = runs.truth(_stem)
     _rows_e, _notes = {}, {}
     for _label, _variant in (
         (_before, "Zephyr, all cameras, on DF"),
@@ -2074,19 +1843,34 @@ def tables_md():
     ## Supplementary tables
 
     The sets of each cross-validation fold, the comparison networks' settings (from each
-    run's own `config.json`); written as CSV for main.typ. The 359-Hz sessions held out
-    of the published split (its test set C) are not scored in the paper.
+    run's own `config.json`); written as CSV for main.typ. The 359-Hz sessions each fold
+    holds out (its test set C) are not scored in the paper.
     """)
     return
 
 
 @app.cell
-def supplementary_tables(spec):
+def supplementary_tables(folds):
     _tables = FIGURES.parent / "tables"
 
-    # The sets of each cross-validation fold (cross_validation.parquet), with a check
-    # that each fold's test A animals are those its runs were scored on.
-    _cv = pd.read_parquet(runs.dataset_file("cross_validation.parquet", spec.root))
+    # The sets of each cross-validation fold, as the capsule's experiment trained and
+    # scored them (experiments/face.toml: each set's sessions), with a check that each
+    # fold's test A animals are those its runs were scored on.
+    _experiment = tomllib.loads(
+        (runs.MANUSCRIPT / "experiments" / "face.toml").read_text(encoding="utf8")
+    )
+    _subject = dict(
+        zip(folds["session_id"], folds["subject_id"].astype(str), strict=True)
+    )
+
+    def _sessions(fold: dict, name: str) -> list[str]:
+        """The sessions of set *name* (``train``, ``val``, ``test_a``-``c``) of *fold*."""
+        if name == "train":
+            return [g for part in fold["train"] for g in part["groups"]]
+        if name == "val":
+            return list(fold["val"]["groups"])
+        return list(fold["test"][name]["groups"])
+
     _names = {
         "train": "Training",
         "val": "Validation",
@@ -2097,14 +1881,14 @@ def supplementary_tables(spec):
     _rows, _checked = [], {}
     _scored = runs.cv_scores("per_recording")
     for _f in runs.RESULTS.cross_validation.folds:
-        _col = _cv[f"fold_{_f.split('_')[-1]}"]
+        (_fold,) = [f for f in _experiment["fold"] if f["name"] == _f]
         for _set, _label in _names.items():
-            _in = _cv[_col == _set]
+            _in = _sessions(_fold, _set)
             _rows.append(
                 {
                     "fold": _f,
                     "set": _label,
-                    "animals": _in["subject_id"].nunique(),
+                    "animals": len({_subject[s] for s in _in}),
                     "sessions": len(_in),
                 }
             )
@@ -2113,7 +1897,7 @@ def supplementary_tables(spec):
             & (_scored["method"] == runs.REFERENCE)
             & (_scored["set"] == runs.SETS["test_a"])
         ]
-        _want = set(_cv.loc[_col == "test_a", "subject_id"].astype(str))
+        _want = {_subject[s] for s in _sessions(_fold, "test_a")}
         _checked[_f] = set(_a["subject"].astype(str)) == _want
     fold_sizes = pd.DataFrame(_rows).pivot(
         index="set", columns="fold", values=["animals", "sessions"]
@@ -2132,10 +1916,7 @@ def supplementary_tables(spec):
     _gpu = runs.wall_time(_nets).set_index("method")
     _rows = []
     for _m in _nets:
-        _run = runs.RUNS[_m]
-        _path = runs._fetch(
-            f"{runs.folder(_run)}/{runs.seeds(runs.folder(_run))[0]}/config.json"
-        )
+        _path = runs.run_file(_m, "config.json")  # its run on the first fold
         _tp = json.loads(_path.read_text())["fold"]["train_params"]
         _rows.append(
             {
@@ -2169,7 +1950,6 @@ def figs1(by_fold, test_a):
     # score when they share the animal but not the rig, and when they share the rig
     # but not the animal, with intervals from resampling animals.
     _a = by_fold[(by_fold["set"] == test_a) & (by_fold["method"] == runs.REFERENCE)]
-    _a = _a[_a["fold"] != "published"]
     _pairs = {m: analysis.rig_animal_pairs(_a, m) for m in ("inhale", "correlation")}
     _summaries = {m: analysis.rig_animal_bootstrap(p) for m, p in _pairs.items()}
     figs1a = plots.rig_animal_panel(
@@ -2191,9 +1971,7 @@ def figs2(by_fold, rate_share, test_a, with_unit):
     # predicting on the 60-Hz grid, against the same network on 60-Hz video, on every
     # fold. a: the difference per test set, paired by fold; b: inhale F1 on new animals
     # by breathing rate (each fold's breaths pooled, then over folds).
-    _ref = by_fold[
-        (by_fold["method"] == runs.REFERENCE) & (by_fold["fold"] != "published")
-    ]
+    _ref = by_fold[by_fold["method"] == runs.REFERENCE]
     _recs = pd.concat(
         [_ref, with_unit(runs.cv_scores(variants=True))], ignore_index=True
     )
@@ -2552,75 +2330,12 @@ def figs3(rate_share, test_a, with_unit):
 @app.cell
 def figs4():
     # Supplementary Fig. 4: what the three cameras see, in a representative subset of
-    # sessions, its three cameras side by side with the crop box each network reads.
-    # Face: the dataset's thumbnails and clip list; side and front: the first frames and
-    # boxes their box lists were placed on.
-    from PIL import Image
-
-    from zephyr.config import ClipList, load
-
-    _shown = [
-        "behavior_810750_2025-11-05_20-47-56",
-        "behavior_828418_2025-11-12_23-52-42",
-        "behavior_811026_2025-11-25_21-25-01",
-        "behavior_815104_2025-11-26_22-46-47",
-        "behavior_828425_2025-11-28_22-26-13",
-        "behavior_828425_2025-12-19_16-43-15",
-        "behavior_806527_2026-01-23_19-16-56",
-        "807093_2026-02-10_17-02-30",
-        "841310_2026-02-19_21-04-00",
-        "828424_2026-02-21_00-33-08",
-        "828415_2026-02-28_00-20-42",
-        "823993_2026-03-02_21-02-53",
-        "863680_2026-06-26_16-20-33",
-        "863698_2026-07-22_16-58-02",
-        "864848_2026-09-18_19-51-33",
-        "879294_2026-09-29_20-38-40",
+    # sessions (picks.VIEW_SESSIONS), its three cameras side by side with the crop box
+    # each network reads (the corpus analysis): face, the corpus's thumbnail and clip
+    # list; side and front, the first frame of the clip their clip lists' boxes are on.
+    _sessions = [
+        {"label": _s, "views": runs.camera_views(_s)} for _s in picks.VIEW_SESSIONS
     ]
-    _lists = {
-        "Face camera": (runs.root() / "dataset" / "clips.toml", None),
-        "Side camera": (
-            runs.root() / "boxes-side" / "side_camera_snout.toml",
-            runs.root() / "boxes-side" / "frames",
-        ),
-        "Front camera": (
-            runs.root() / "boxes-front" / "front_camera_snout.toml",
-            runs.root() / "boxes-front" / "frames",
-        ),
-    }
-
-    def _boxes(path):
-        """First span's box of each session, in the list's preprocessed frame."""
-        _list = load(ClipList, path, check_files=False)
-        _out = {}
-        for _c in _list.resolve():
-            _session, _span = _c.source.stem.rsplit("_span", 1)
-            if _span.startswith("1_") and _c.box is not None:
-                _out[_session] = (_c.source.stem, _c.box)
-        return _out, _list.preprocess.target_size[0]
-
-    _found = {camera: _boxes(path) for camera, (path, _) in _lists.items()}
-
-    def _image(camera, session):
-        _stem, _ = _found[camera][0][session]
-        _frames = _lists[camera][1]
-        if _frames is None:
-            _path = runs.root() / "dataset" / "thumbnails" / f"{session}_FaceCamera.png"
-            return np.asarray(Image.open(_path).convert("L"))
-        return np.load(next(_frames.glob(f"frame_{_stem}-*.npy")))
-
-    _sessions = []
-    for _session in _shown:
-        _views = {}
-        for _camera in _lists:
-            _img = _image(_camera, _session)
-            _, (_x, _y, _w, _h) = _found[_camera][0][_session]
-            _scale = _img.shape[1] / _found[_camera][1] / 2  # shown at half size
-            _views[_camera] = (
-                _img[::2, ::2],
-                (_x * _scale, _y * _scale, _w * _scale, _h * _scale),
-            )
-        _sessions.append({"label": _session, "views": _views})
     figs4a = plots.camera_views_panel(LAYOUT["figs4"]["width_mm"], _sessions)
     plots.save_panel(figs4a, FIGURES / "figs4" / "a.svg")
     v_views = {"sessions": values.count(len(_sessions))}
@@ -2657,7 +2372,6 @@ def manuscript_values(
     ]
     v_threshold = {
         "folds": values.span(min(_cv), max(_cv)),
-        "published": values.num(runs.head_threshold(runs.REFERENCE)),
     }
     manuscript = {
         "benchmark": v_fig3,
