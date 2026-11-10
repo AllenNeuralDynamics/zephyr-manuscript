@@ -61,12 +61,9 @@ def size(figure: str, name: str) -> tuple[float, float]:
 
 @app.cell
 def example_clip():
-    # A typical new-animal clip of the single network (runs.SINGLE): among its test-A
-    # clips with frames in the dataset copy, the one whose trace correlation is nearest
-    # their median.
-    _c = runs.scores([runs.SINGLE]).query("set == @runs.SETS['test_a']")
-    _c = _c[_c["stem"].map(runs.is_local)].set_index("stem")["correlation"]
-    stem = (_c - _c.median()).abs().idxmin()
+    # A typical new-animal clip of the single network (runs.SINGLE), picked by hand
+    # (picks.EXAMPLE_CLIP).
+    stem = picks.EXAMPLE_CLIP
     truth = runs.truth(stem)
     zephyr = runs.prediction(runs.SINGLE, stem)
     origin = float(zephyr["times"][0])
@@ -362,7 +359,6 @@ def fig3_md():
 def fig3_methods():
     order = [
         "Pixel (motion)",
-        "Pixel (PCA)",
         "Pixel (SNR)",
         "Facemap",
         "TS-CAN",
@@ -425,30 +421,17 @@ def fig3_folds(methods, with_unit):
 
 @app.cell
 def fig3a(cv_methods, methods):
-    # One clip of an animal held out by fold cv_0: the clip whose correlation, averaged
-    # over the methods, is nearest the median of its new-animal clips; 6 s of it where
-    # the thermistor's breathing rate changes most.
+    # One clip of an animal held out by fold cv_0 and an excerpt of it, picked by hand
+    # (picks.STACK_CLIP, picks.STACK_EXCERPT).
     _fold = runs.RUNS[runs.SINGLE].fold
     _names = {n: runs.cv_name(n, _fold) for n in methods if n in cv_methods}
-    _all = runs.scores(list(_names.values())).query("set == @runs.SETS['test_a']")
-    _all = _all[_all["stem"].map(runs.is_local)]
-    _held = _all.groupby("stem")["method"].nunique() == len(_names)
-    _mean = _all[_all["stem"].isin(_held[_held].index)].groupby("stem")["correlation"]
-    _mean = _mean.mean()
-    _stem = (_mean - _mean.median()).abs().idxmin()
+    _stem = picks.STACK_CLIP
     _truth = runs.truth(_stem)
     _preds = {n: runs.prediction(c, _stem) for n, c in _names.items()}
     _origin = float(_preds["Zephyr"]["times"][0])
-    _inhales = _truth["inhale"] - _origin
-
-    def _change(t0: float) -> int:
-        first = np.count_nonzero((_inhales >= t0) & (_inhales < t0 + 3.0))
-        second = np.count_nonzero((_inhales >= t0 + 3.0) & (_inhales < t0 + 6.0))
-        return abs(second - first)
-
-    _t0 = float(max(np.arange(0.0, _inhales[-1] - 6.0, 0.5), key=_change))
+    _t0, _window = picks.STACK_EXCERPT
     fig3a = plots.trace_stack_panel(
-        *size("fig3", "a"), _preds, _truth, _origin, _t0, 6.0
+        *size("fig3", "a"), _preds, _truth, _origin, _t0, _window
     )
     plots.save_panel(fig3a, FIGURES / "fig3" / "a.svg")
     mo.vstack([mo.md(f"{_stem}, from {_t0:.1f} s"), fig3a])
@@ -1123,11 +1106,21 @@ def figs8(qc_windows):
     # works and known failures.
     _cams = [q for q in runs.RESULTS.quality.set if q.role in ("application", "camera")]
     _camera = {q.label: q.camera for q in _cams}
-    _windows = qc_windows.assign(
-        row=qc_windows["set"].map(_camera).fillna(qc_windows["set"])
-    )
+    # the held-out animals split by the camera of their clips (the all-camera network
+    # scores each)
+    _held_by = {c.split()[0] + "Camera": c for c in style.CAMERAS if "camera" in c}
+    _held_cam = qc_windows["stem"].astype(str).str.rsplit("_", n=1).str[-1]
+    _held = (qc_windows["set"] == "Held-out animals").to_numpy()
+    _row = qc_windows["set"].map(_camera).fillna(qc_windows["set"])
+    _row[_held] = "Held-out animals, " + _held_cam[_held].map(_held_by).str.lower()
+    _windows = qc_windows.assign(row=_row)
+    _held_rows = [
+        r
+        for c in _held_by.values()
+        if (r := f"Held-out animals, {c.lower()}") in set(_windows["row"])
+    ]
     _rows = [
-        ("Held-out animals", "working"),
+        *[(r, "working") for r in _held_rows],
         ("Dynamic foraging, refined", "working"),
         *[(q.camera, q.role) for q in _cams],
         ("Dynamic foraging, unrefined", "null"),
@@ -1257,7 +1250,7 @@ def table1(by_fold, cv_methods, fold_tables, methods, on_cpu, test_a, timing):
         )
 
     _ref, _f1, _r = runs.REFERENCE, _summary["inhale"], _summary["correlation"]
-    _pixels = ["Pixel (motion)", "Pixel (PCA)", "Pixel (SNR)"]
+    _pixels = ["Pixel (motion)", "Pixel (SNR)"]
     _others = ["TS-CAN", "RhythmFormer", "PhysFormer"]
     _dsp = analysis.fold_scores(_a, "inhale_f1", by=["method"]).set_index("method")
     v_fig3 = {
@@ -1267,7 +1260,7 @@ def table1(by_fold, cv_methods, fold_tables, methods, on_cpu, test_a, timing):
         "units_b": values.count(cv_counts_b["units"]),
         "animals_b": values.count(cv_counts_b["animals"]),
         "motion_r": values.num(_r.loc["Pixel (motion)", "mean"]),
-        "pixel_r_max": values.num(_r.loc[["Pixel (PCA)", "Pixel (SNR)"], "mean"].max()),
+        "pixel_r_max": values.num(_r.loc[["Pixel (SNR)"], "mean"].max()),
         "pixel_f1": values.span(
             _f1.loc[_pixels, "mean"].min(), _f1.loc[_pixels, "mean"].max()
         ),
@@ -1926,7 +1919,13 @@ def supplementary_tables(folds):
                 "steps": _tp["steps_per_epoch"],
                 "lr": _tp["lr"],
                 "infer_window": _tp["infer_window"],
-                "scales": "/".join(map(str, _tp["scales"])),
+                # only Zephyr and PhysNet read the scales; the others' are an unused
+                # default
+                "scales": (
+                    "/".join(map(str, _tp["scales"]))
+                    if _m in ("Zephyr", "PhysNet")
+                    else "—"
+                ),
                 "params_m": f"{_gpu.loc[_m, 'parameters (M)']:.2f}",
                 "gpu_s": f"{_gpu.loc[_m, 's per clip (median)']:.2f}",
             }

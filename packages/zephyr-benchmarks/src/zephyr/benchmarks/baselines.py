@@ -2,7 +2,7 @@
 
 Layout under ``out_root``::
 
-    pixel/{pca,snr,motion}/traces/{clip}.npy   raw output-grid traces (cache)
+    pixel/{snr,motion}/traces/{clip}.npy   raw output-grid traces (cache)
     pixel/{method}/{blind,calibrated}/evaluation.json
     facemap/bases.npz
     facemap/{motion,movie,both}/evaluation.json
@@ -21,7 +21,7 @@ from zephyr.signal import BREATHING_SIGNAL_COLUMN, TIME_COLUMN
 
 from . import common, facemap_ridge, pixel
 
-PIXEL_METHODS = ("pca", "snr", "motion")
+PIXEL_METHODS = ("snr", "motion")
 FACEMAP_VARIANTS = ("motion", "movie", "both")
 
 
@@ -67,8 +67,6 @@ def score_traces(traces, groups) -> dict:
 def pixel_trace(method: str, entry, fs: float, bin_factor: int) -> np.ndarray:
     """Selection-grid trace for one clip."""
     frames = common.load_gray(entry, bin_factor=bin_factor)
-    if method == "pca":
-        return pixel.pixel_pca(frames, fs)
     if method == "snr":
         return pixel.snr_weighted(frames, fs)
     if method == "motion":

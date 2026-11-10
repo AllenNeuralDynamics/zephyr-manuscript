@@ -7,7 +7,7 @@ a fold whose ``train_params.arch`` names them.
 
 CLI
 ---
-    zephyr-benchmarks pixel   EXPERIMENT [--fold NAME] [--methods pca snr motion]
+    zephyr-benchmarks pixel   EXPERIMENT [--fold NAME] [--methods snr motion]
     zephyr-benchmarks facemap EXPERIMENT [--fold NAME] [--n-components 100]
     zephyr-benchmarks timing  EXPERIMENT [--fold NAME] --checkpoint NAME=best.pt ...
     zephyr-benchmarks collect --runs EXPERIMENT_OUTPUT_DIR
@@ -74,7 +74,7 @@ def run_timing(
         )
         print(f"  mean {result['summary']['mean_s']:.2f} s/clip", flush=True)
 
-    for method in ("pca", "snr", "motion"):
+    for method in ("snr", "motion"):
         add(f"pixel {method}", "cpu", timing.pixel_method(method, fs, 2))
     lags = np.arange(-15, 16, 3)
     for variant in ("motion", "movie", "both"):
@@ -291,9 +291,7 @@ def main(argv: list[str] | None = None) -> None:
             "--cache", type=Path, help="Feature cache (default: the experiment's)."
         )
         if name == "pixel":
-            command.add_argument(
-                "--methods", nargs="+", default=["pca", "snr", "motion"]
-            )
+            command.add_argument("--methods", nargs="+", default=["snr", "motion"])
             command.add_argument("--bin", type=int, default=2)
         elif name == "facemap":
             command.add_argument("--n-components", type=int, default=100)

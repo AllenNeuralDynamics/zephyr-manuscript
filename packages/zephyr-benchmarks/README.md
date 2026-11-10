@@ -135,7 +135,7 @@ within about the seed-to-seed spread rather than on the exact numbers.
   uv run zephyr-benchmarks collect --runs runs/baselines-nets
   ```
 
-  The pixel methods are `pca`, `snr` and `motion` (all three by default). `motion` is
+  The pixel methods are `snr` and `motion` (both by default). `motion` is
   motion energy, the mean absolute frame difference over the crop, band-passed. It is
   rectified, so it follows how fast the face moves rather than the breath
   itself; its `calibrated` variant fits the sign and lag on the training clips.

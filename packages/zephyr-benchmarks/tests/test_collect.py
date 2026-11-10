@@ -22,14 +22,14 @@ class CollectTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             self._write(
-                root / "pixel" / "pca" / "blind" / "evaluation.json", _evaluation(0.1)
+                root / "pixel" / "snr" / "blind" / "evaluation.json", _evaluation(0.1)
             )
             self._write(
                 root / "facemap" / "motion" / "evaluation.json", _evaluation(0.3)
             )
             rows = collect.collect(root, runs_dir=None)
             by = {(r["method"], r["variant"]): r for r in rows}
-            self.assertAlmostEqual(by[("pixel-pca", "blind")]["correlation_mean"], 0.1)
+            self.assertAlmostEqual(by[("pixel-snr", "blind")]["correlation_mean"], 0.1)
             self.assertAlmostEqual(by[("facemap", "motion")]["correlation_mean"], 0.3)
             self.assertTrue((root / "results.md").exists())
 
