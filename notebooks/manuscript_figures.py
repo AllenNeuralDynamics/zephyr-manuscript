@@ -1919,7 +1919,13 @@ def supplementary_tables(folds):
                 "steps": _tp["steps_per_epoch"],
                 "lr": _tp["lr"],
                 "infer_window": _tp["infer_window"],
-                "scales": "/".join(map(str, _tp["scales"])),
+                # only Zephyr and PhysNet read the scales; the others' are an unused
+                # default
+                "scales": (
+                    "/".join(map(str, _tp["scales"]))
+                    if _m in ("Zephyr", "PhysNet")
+                    else "—"
+                ),
                 "params_m": f"{_gpu.loc[_m, 'parameters (M)']:.2f}",
                 "gpu_s": f"{_gpu.loc[_m, 's per clip (median)']:.2f}",
             }

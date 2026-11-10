@@ -325,9 +325,7 @@ We also compared respiration rate, counted in 10-s windows, with the thermistor'
     animal × rig unit, then over the held-out-animal units of a split, then over splits. Values
     are the mean with its 95% interval over the #v("benchmark.folds") cross-validation
     folds (#v("benchmark.units_a") units of #v("benchmark.animals_a") animals, each animal
-    new in one fold). Methods run on one split show the published split alone
-    (#v("benchmark.published_units") units of #v("benchmark.published_animals") animals),
-    without an interval. Respiration rate is counted in 10-s windows. MAE and RMSE are in
+    new in one fold). Respiration rate is counted in 10-s windows. MAE and RMSE are in
     cycles per minute, MAPE is relative to the thermistor's rate, and r is the Pearson
     correlation of the windowed rates. Waveform r is the correlation of the predicted
     respiration waveform with the thermistor. F1 counts events within 25 ms. Inference is the
@@ -378,7 +376,7 @@ from #v("size.draw_animals") to #v("size.all_animals"), each with all their sess
 (#fig(<fig:general>, "c")). Despite a clear trend of improvement with more animals,
 #v("size.fewest") animals already gave an inhalation F1 of #v("size.fewest_f1") against #v("size.f1") with all #v("size.all_animals"). As
 the number of animals decreased to #v("size.draw_animals"), average performance did not drop
-dramatically but became more variable across the three draws (F1
+dramatically but became more variable across the #v("size.draws") draws (F1
 #v("size.draws_f1")), suggesting that the space of inputs was not adequately represented in
 such a small training set. We also note that the duration of video mattered less than the number of unique animals. All
 #v("size.all_animals") animals with a quarter of their sessions matched the full training set (F1 #v("size.partial_f1")).
@@ -632,7 +630,7 @@ TODO SONYA
 == Corpus construction
 
 Sessions were selected with the rules of @tab:qc, in order. Thermistor quality was judged
-in 30-s windows after removing large artifacts (and #tbd[2] s around them), and clips were
+in 30-s windows after removing large artifacts (and 2 s around them), and clips were
 cut only from stretches of at least 300 s in which every window passed.
 
 #figure(
@@ -641,48 +639,53 @@ cut only from stretches of at least 300 s in which every window passed.
     align: (left, left, left, right),
     toprule,
     table.header([*Stage*], [*Rule*], [*Threshold*], [*Removed*]),
-    midrule, [Window (30 s)], [Signal amplitude (5th–95th percentile range)], [≥ #tbd[100] raw units],
-    [#tbd[2,038]], [], [Clipped samples], [#tbd[0]% at ≤ #tbd[20] or ≥ #tbd[4,090]],
-    [—], [], [Cycles outside #tbd[2–15] Hz], [≤ #tbd[10]%],
-    [—], [], [Repeated events (I→I or E→E)], [≤ #tbd[5]%],
-    [—], [Session], [Repeated events over the session], [≤ #tbd[0.3]%],
-    [#tbd[257]], [], [Longest run of good windows], [≥ #tbd[300] s],
-    [#tbd[229]], [], [Event amplitude within expected range], [robust $z <= #tbd[3]$],
-    [#tbd[1]], [], [Dead sensor (low SNR)], [modes ≥ #tbd[3] dB apart],
-    [—], [Clips], [Room for two clips in good stretches], [#tbd[2] × #tbd[300] s],
-    [#tbd[73]], [Cameras], [A camera missing], [],
-    [#tbd[3]], [], [Timestamp alignment issues], [],
-    [#tbd[13]], [], [Low exposure], [],
-    [#tbd[6]], [Manual review], [], [],
-    [#tbd[4]], midrule, [Front camera], [Not recorded in the session],
+    midrule, [Window (30 s)], [Signal amplitude (5th–95th percentile range)], [≥ 100 raw units],
+    [2,038], [], [Clipped samples], [0% at ≤ 20 or ≥ 4,090],
+    [—], [], [Cycles outside 2–15 Hz], [≤ 10%],
+    [—], [], [Repeated events (I→I or E→E)], [≤ 5%],
+    [—], [Session], [Dead sensor (low SNR)], [modes ≥ 3 dB apart],
+    [—], [], [Repeated events over the session], [≤ 0.3%],
+    [257], [], [Consistent events (rate, alternation, amplitude)], [robust $z <= 3$],
+    [1], [], [Longest run of good windows], [≥ 300 s],
+    [229], [], [Trace rejected on manual review], [],
+    [4], [Clips], [Room for two clips in good stretches], [2 × 300 s],
+    [73], [Cameras], [A camera missing], [],
+    [3], [], [Timestamp alignment issues], [],
+    [9], [Sets], [Sessions per animal and rig], [training 10, validation 3, held-out
+      animals 5; held-out sessions up to 5, at most a third of the pair's, leaving 2 to
+      train on],
+    [930], [], [The 359-Hz animals' 240-Hz sessions beyond the caps], [],
+    [8], [], [Low exposure (found after the draw)], [],
+    [6], [], [Trace rejected on review (after the draw)], [],
+    [2], midrule, [Front camera], [Not recorded in the session],
     [], [#v("optional_cameras.front_not_recorded")], [], [Not on the animal (manual review)],
     [], [#v("optional_cameras.front_reviewed")], bottomrule,
   ),
   caption: [*Corpus selection.* Rules are listed in the order they were applied,
     with the number of sessions each removed. Of #v("selection.recorded") recorded
     sessions, #v("selection.thermistor") passed the thermistor rules and
-    #v("selection.clips") the clip and camera rules. Window rules mark 30-s windows as good
+    #v("selection.clips") the clip and camera rules; capping each animal's sessions on each
+    rig, so that no animal dominates a set, removed most of the rest. Window rules mark 30-s windows as good
     or bad and remove no session on their own ("—"). The exception is amplitude, which is
-    also applied to the session as a whole and removed #tbd[2,038] sessions. A session
+    also applied to the session as a whole and removed 2,038 sessions. A session
     without a long enough run of good windows is removed. A repeated event is an
     inhalation followed by another inhalation, or an exhalation by another exhalation.
-    Timestamps with a single one-frame rollback were repaired (#tbd[73]) rather than
-    removed. Low exposure and unplugged sync cables were found after the sets were drawn,
-    and those sessions were removed from them, leaving the #tbd[560] sessions of the
+    Timestamps with a single one-frame rollback were repaired (73) rather than
+    removed. Low exposure and two rejected traces were found after the sets were drawn,
+    and those sessions were removed from them, leaving the #v("corpus.sessions") sessions of the
     corpus. The front camera is optional. A session without its video, because it was
     never recorded or pointed away from the animal, keeps its face and side clips, so the
     last two rows count front-camera videos left out, not sessions. The face and side
-    cameras were recorded in every session #note[check the dead-sensor and window-rule
-      counts].],
+    cameras were recorded in every session.],
 ) <tab:qc>
 
 _Thermistor events._ Inhalation and exhalation onsets were detected on the thermistor at
 its own rate (200-250 Hz) with an adaptive peak detector. The signal was filtered (zero-phase
-second-order Butterworth, high-pass #tbd[1] Hz, low-pass #tbd[40] Hz) and z-scored over
-the recording. Maxima at least #tbd[50] ms apart were candidate inhalation onsets, and
+second-order Butterworth, high-pass 1 Hz, low-pass 40 Hz) and z-scored over
+the recording. Maxima at least 50 ms apart were candidate inhalation onsets, and
 minima candidate exhalation onsets. A candidate was kept when its prominence was at least
-#tbd[0.2] of the local range of the signal (5th to 95th percentile over a centred
-#tbd[1.5]-s window), so that a shallow cycle next to deep ones is kept while small
+0.2 of the local range of the signal (5th to 95th percentile over a centred
+1.5-s window), so that a shallow cycle next to deep ones is kept while small
 ripples on a flat stretch are not. These events were used for training, quality control
 and scoring.
 
@@ -701,18 +704,16 @@ Test data was further split into two categories: held-out sessions (sessions fro
     align: (left, left, right, right),
     toprule,
     table.header([*Set*], [*Held out as*], [*Animals*], [*Sessions*]),
-    midrule, [Train], [—], [#tbd[31–33]],
-    [#tbd[213–295]], [Validation], [whole animals], [#tbd[9]],
-    [#tbd[67–144]], [Held-out animals], [whole animals], [#tbd[9–10]],
-    [#tbd[75–128]], [Held-out sessions], [sessions of training animals], [#tbd[26–30]],
-    [#tbd[5]], midrule, [Total], [],
-    [#tbd[50]], [#tbd[560]], bottomrule,
+    midrule, [Train], [—], [31–33],
+    [213–268], [Validation], [whole animals], [9],
+    [87–144], [Held-out animals], [whole animals], [9–10],
+    [75–128], [Held-out sessions], [sessions of training animals], [26–30],
+    [70–119], midrule, [Total], [],
+    [#v("corpus.animals")], [#v("corpus.sessions")], bottomrule,
   ),
-  caption: [*Split sizes.* Values are the minimum and maximum over the #tbd[6]
-    splits, the published split and the #tbd[5] cross-validation folds. In the folds,
-    each of the #tbd[48] animals outside the #tbd[359]-Hz group is a held-out animal once.
-    Validation includes #tbd[2] sessions of the #tbd[359]-Hz animals. Animals with held-out
-    sessions are also training animals, so animals do not add up across sets.],
+  caption: [*Split sizes.* Values are the minimum and maximum over the
+    #v("benchmark.folds") cross-validation folds. Each of the #v("benchmark.animals_a")
+    animals is a held-out animal in one fold.],
 ) <tab:split>
 
 == Preprocessing
@@ -723,15 +724,15 @@ timestamps, and standardized over the training clips. We note that the network a
 performs well at 30 Hz (@fig:input-rate) but with slightly reduced accuracy. For the side and front cameras,
 which film the animal from farther away, frames were kept at the native 720 × 540 resolution
 instead, with the same 96 × 96-pixel box over the snout. The target was the thermistor
-filtered as above but high-passed at #tbd[0.2] Hz, resampled to 60 Hz and z-scored per
+filtered as above but high-passed at 0.2 Hz, resampled to 60 Hz and z-scored per
 clip.
 
 == Network architecture
 
 A convolutional encoder, whose first layer spans three frames, embeds each crop
 (@tab:arch); embeddings are interpolated by their timestamps onto a uniform 60-Hz grid, and
-a non-causal temporal convolutional network (receptive field #tbd[4.2] s) outputs the
-respiration waveform and an inhalation onset logit at each step (#tbd[0.86] million parameters).
+a non-causal temporal convolutional network (receptive field 4.2 s) outputs the
+respiration waveform and an inhalation onset logit at each step (0.86 million parameters).
 
 #figure(
   table(
@@ -757,12 +758,11 @@ respiration waveform and an inhalation onset logit at each step (#tbd[0.86] mill
 == Training
 
 The loss was $1 - r$ between the predicted and target waveforms, averaged over three time
-scales (the waveform, and copies average-pooled by 4 and 16 samples), plus #tbd[0.5] times a
-binary cross-entropy on inhalation onsets against Gaussians (s.d. #tbd[20] ms) centred on the
-thermistor inhalations, with positives weighted by the inverse of their share in each
+scales (the waveform, and copies average-pooled by 4 and 16 samples), plus 0.5 times a
+binary cross-entropy on inhalation onsets against Gaussians (s.d. 20 ms) centred on the
+thermistor inhalations, with positives weighted by the ratio of negatives to positives in each
 batch. Other settings are in @tab:train; the checkpoint with the highest mean
-correlation on the validation clips was kept #note[seeds, GPU, time per run]. The
-comparison networks were trained the same way, each with the loss of its original paper
+correlation on the validation clips was kept. Each network was trained once per fold on a NVIDIA Tesla T4. The comparison networks were trained the same way, each with the loss of its original paper
 (Supplementary Note 2).
 
 #figure(
@@ -773,35 +773,35 @@ comparison networks were trained the same way, each with the loss of its origina
     table.header([*Setting*], [*Value*]),
     midrule, [Input],
     [gray, 96 × 96 crop, 60-Hz selection grid], [Window, batch],
-    [#tbd[512] samples (#tbd[8.5] s), #tbd[16]], [Optimizer],
-    [AdamW, learning rate #tbd[6 × 10#super[−4]], weight decay #tbd[10#super[−4]]], [Schedule],
-    [#tbd[200]-step linear warm-up, cosine decay to 1%], [Regularization],
-    [dropout #tbd[0.1] (temporal network), gradient clip #tbd[1], weight EMA #tbd[0.999]], [Loss],
-    [multi-scale $1 - r$ (scales 1, 4, 16) + #tbd[0.5] × inhalation onset BCE], [Inhalation onset target],
-    [Gaussians, s.d. #tbd[20] ms, per-batch positive weight], [Augmentation],
-    [frame jitter ±0.25 frame, shift ±#tbd[4] px, zoom ±#tbd[10]%, brightness ±#tbd[15]%, contrast ±#tbd[20]%, noise #tbd[2] grey levels],
+    [512 samples (8.5 s), 16], [Optimizer],
+    [AdamW, learning rate 6 × 10#super[−4], weight decay 10#super[−4]], [Schedule],
+    [200-step linear warm-up, cosine decay to 1%], [Regularization],
+    [dropout 0.1 (temporal network), gradient clip 1, weight EMA 0.999], [Loss],
+    [multi-scale $1 - r$ (scales 1, 4, 16) + 0.5 × inhalation onset BCE], [Inhalation onset target],
+    [Gaussians, s.d. 20 ms, per-batch positive weight], [Augmentation],
+    [frame jitter ±0.25 frame, shift ±4 px, zoom ±10%, brightness ±15%, contrast ±20%, noise 2 grey levels],
     [Selection],
 
-    [mean correlation on validation animals, every #tbd[4] epochs], [Stopping],
-    [patience #tbd[12] scorings, #tbd[40]–#tbd[200] epochs of #tbd[100] steps], [Precision],
-    [bf16 mixed precision], bottomrule,
+    [mean correlation on validation animals, every 4 epochs], [Stopping],
+    [patience 12 scorings, 40–200 epochs of 100 steps], [Precision],
+    [fp16 mixed precision (bf16 is not native on the T4)], bottomrule,
   ),
   caption: [*Training settings of Zephyr.*],
 ) <tab:train>
 
 == Inference and event detection
 
-Clips were predicted in overlapping windows of #tbd[1,024] samples, discarding #tbd[126]
+Clips were predicted in overlapping windows of 1,024 samples, discarding 126
 samples (half the receptive field) at each edge, so that the stitched waveform equals a
 single pass over the clip. Inhalation onsets were the peaks of the inhalation onset probability above
-a threshold, at least #tbd[50] ms apart. The threshold was chosen for each trained network
+a threshold, at least 50 ms apart. The threshold was chosen for each trained network
 on its own validation animals, never on a test set, once early stopping had fixed its
-weights. Each threshold from #tbd[0.20] to #tbd[0.85] in steps of #tbd[0.05] was scored
+weights. Each threshold from 0.20 to 0.85 in steps of 0.05 was scored
 by the mean inhalation F1 over the validation clips (@sec:scoring). Thresholds within
-#tbd[0.002] of the best F1 tied, and of these the one whose inhalations per minute came
+0.002 of the best F1 tied, and of these the one whose inhalations per minute came
 closest to the thermistor's was kept. The network keeps this threshold, and every
 prediction it makes uses it. It was
-#v("threshold.folds") for the five folds' networks and #v("threshold.published") for the published split's. Exhalations, and the inhalations of methods without
+#v("threshold.folds") for the five folds' networks. Exhalations, and the inhalations of methods without
 an inhalation onset output ("DSP"), were found on the predicted waveform by the detector used on the
 thermistor, with the same settings (the 40-Hz low-pass does not apply at 60 Hz).
 
@@ -837,8 +837,8 @@ Note 2); none has an inhalation onset output, so their inhalations were found on
     [Facemap],
     [#source("Facemap")],
 
-    [Top #tbd[100] principal components of the
-      crop's motion energy and raw frames, at #tbd[11] lags (#tbd[±250] ms); ridge
+    [Top 100 principal components of each of the crop's motion energy and raw
+      frames (binned by 2), at 11 lags (±250 ms); ridge
       readout, strength chosen leaving one training recording out],
     [TS-CAN],
     [#source("TS-CAN")],
@@ -862,7 +862,7 @@ Note 2); none has an inhalation onset output, so their inhalations were found on
 ) <tab:methods>
 
 _Timing._ Inference time was the wall-clock time from preprocessed crops in memory to the
-60-Hz waveform, median over #tbd[8] 5-min clips after a warm-up, at batch size 1 in bf16 on an
+60-Hz waveform, median over 8 5-min clips after a warm-up, at batch size 1 in bf16 on an
 NVIDIA RTX 4060 Ti (non-network methods on the CPU, an Intel Core i9-13900K with 24 cores and 64 GB of
 RAM).
 
@@ -996,9 +996,9 @@ network trained on all three cameras of the first fold, at its inhalation onset 
 The unit of analysis is an animal on one rig, whose sessions share the implant, camera
 position and lighting; two rigs of one animal differ in score about two-thirds as much as
 two animals on one rig (@fig:rigs). Scores were averaged over a unit's clips, then over a fold's units,
-and reported as the mean over the #tbd[5] folds with a 95% bootstrap interval over folds; differences between
-methods are paired by fold. Analyses of a single fold, or of the published split,
-use a percentile bootstrap over units (#tbd[2,000] draws). F1 by rate, F1 against
+and reported as the mean over the 5 folds with a 95% bootstrap interval over folds; differences between
+methods are paired by fold. Analyses of a single fold
+use a percentile bootstrap over units (2,000 draws). F1 by rate, F1 against
 tolerance and the error profile pool each fold's cycles before averaging over folds; the
 inhalation onset lag and rate agreement pool all folds and carry no interval. #note[units of one animal are not independent of each other; check intervals
   with a bootstrap that resamples animals and then units within them]
@@ -1041,7 +1041,7 @@ trained through the same training loop as Zephyr: the same gray 96 × 96 crops o
 60-Hz grid, optimizer, warm-up and cosine schedule, weight averaging, augmentation
 (without the frame jitter of Zephyr) and early stopping on the validation animals.
 Each was trained on the loss of its own paper. TS-CAN, whose input is resized to
-#tbd[36] × #tbd[36] pixels, is trained with the mean squared error against the
+36 × 36 pixels, is trained with the mean squared error against the
 standardized first difference of the target, and PhysNet with the negative Pearson
 correlation. PhysFormer and RhythmFormer read the crops upsampled to the 128 pixels they
 were built for and are trained with a negative Pearson term plus a cross-entropy over
@@ -1064,7 +1064,7 @@ batch, steps per epoch and learning rate are in @tab:nets #note[confirm how the 
     at 60 Hz, and the batch is the number of training windows per optimizer step. Scales
     are the time scales of the correlation loss, used by Zephyr and PhysNet only. The last
     two columns give the number of parameters and the inference time for a 5-min clip on a
-    consumer GPU (NVIDIA RTX 4060 Ti; median of #tbd[8] clips; #link(<sec:methods>)[Methods]).],
+    consumer GPU (NVIDIA RTX 4060 Ti; median of 8 clips; #link(<sec:methods>)[Methods]).],
 ) <tab:nets>
 
 #figure(
@@ -1074,8 +1074,7 @@ batch, steps per epoch and learning rate are in @tab:nets #note[confirm how the 
   caption: [*Method comparison on held-out sessions of training animals.* As in
     @tab:benchmark, but on held-out sessions (#v("benchmark.units_b") animal × rig units of
     #v("benchmark.animals_b") animals). Values are the mean over the
-    #v("benchmark.folds") cross-validation folds with its 95% interval. Methods run on one
-    split show the published split alone.],
+    #v("benchmark.folds") cross-validation folds with its 95% interval.],
 ) <tab:benchmark-b>
 
 #figure(
@@ -1114,8 +1113,8 @@ batch, steps per epoch and learning rate are in @tab:nets #note[confirm how the 
     animals of the five folds. A unit is an animal on one rig, with its score averaged
     over its clips. Histograms show the absolute difference in inhalation F1 (left) and
     waveform correlation (right) between pairs of units that share the animal but not the rig
-    (#tbd[159] pairs of #tbd[22] animals), and between pairs that share the rig but not the
-    animal (#tbd[520] pairs of #tbd[48] animals). Points above give each kind's mean with
+    (159 pairs of 22 animals), and between pairs that share the rig but not the
+    animal (520 pairs of 48 animals). Points above give each kind's mean with
     its 95% bootstrap interval over animals.],
 ) <fig:rigs>
 
