@@ -170,7 +170,7 @@ Sniffing is a fundamental form of active sensing. Each inhalation draws odors in
 timing of sniffing sets when olfactory information is sampled @kepecs2006 @verhagen2007
 @wachowiak2011. Respiration in mice is approximately 2–4 Hz at rest and up to 12–15 Hz
 during active sniffing @wesson2008. Olfactory bulb neurons respond at precise phases of this cycle
-@shusterman2011. Respiration also reflects an animal's internal state #tbd[(citation needed)] and changes with arousal and emotion @homma2008 @delnegro2018. Neurons
+@shusterman2011. Respiration also reflects an animal's internal state and changes with arousal and emotion @homma2008 @delnegro2018. Neurons
 of the breathing rhythm generator themselves promote arousal @yackle2017, and fear-conditioned mice
 breathe at a steady 4 Hz while they freeze @bagur2021. The time of inhalation is therefore a
 natural reference event for olfactory coding, and respiration would provide valuable state information in many
