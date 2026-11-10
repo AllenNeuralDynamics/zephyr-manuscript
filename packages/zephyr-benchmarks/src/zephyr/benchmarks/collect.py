@@ -291,9 +291,7 @@ def main(argv: list[str] | None = None) -> None:
             "--cache", type=Path, help="Feature cache (default: the experiment's)."
         )
         if name == "pixel":
-            command.add_argument(
-                "--methods", nargs="+", default=["snr", "motion"]
-            )
+            command.add_argument("--methods", nargs="+", default=["snr", "motion"])
             command.add_argument("--bin", type=int, default=2)
         elif name == "facemap":
             command.add_argument("--n-components", type=int, default=100)
