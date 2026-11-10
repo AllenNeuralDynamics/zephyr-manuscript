@@ -897,15 +897,18 @@ def label_added() -> pd.DataFrame:
 # --- inference time --------------------------------------------------------------------------
 
 
-GPU_WARMUP_PASSES = 3
-"""Untimed passes of the warm-up clip a network runs before it is timed."""
+WARMUP_PASSES = 3
+"""Untimed passes of the warm-up clip every method runs before it is timed: GPU clocks
+and cuDNN's kernel choice, and on the CPU the BLAS threads and memory, settle over the
+first passes."""
 
 
 def wall_time(labels, n_clips: int = 8) -> pd.DataFrame:
     """Inference seconds per clip of each method of *labels* (its run on the first
-    fold; :mod:`zephyr.benchmarks.timing`: the same test clips for all, one untimed
-    warm-up clip, files read into the OS cache first). Networks on the GPU at each one's
-    own inference window; pixel and Facemap on the CPU. The ``timing`` analysis."""
+    fold; :mod:`zephyr.benchmarks.timing`: the same test clips for all, the warm-up clip
+    :data:`WARMUP_PASSES` times and once more untimed, files read into the OS cache
+    first). Networks on the GPU at each one's own inference window; pixel and Facemap on
+    the CPU. The ``timing`` analysis."""
     path = made("timing", "timing.json")
     done = json.loads(path.read_text()) if path.is_file() else {}
     todo = [n for n in labels if n not in done]
@@ -920,47 +923,40 @@ def wall_time(labels, n_clips: int = 8) -> pd.DataFrame:
     for label in todo:
         name = label if label in RUNS else cv_name(label, CV.folds[0])
         m = RUNS[name]
+        dev = device()
         if m.kind == "network":
             model = network(name)[0]
-            dev = device()
 
             def infer(e, name=name, dev=dev):
                 _predicted(name, e)  # timed: always inference
                 if dev.type == "cuda":
                     torch.cuda.synchronize()
 
-            # GPU clocks and cuDNN's kernel choice settle over a few passes: the
-            # warm-up clip several times before timing's own untimed one.
-            for _ in range(GPU_WARMUP_PASSES):
-                infer(warm)
-            if dev.type == "cuda":
-                torch.cuda.reset_peak_memory_stats()
-            result = timing.time_method(infer, timed, warm)
+        elif m.kind == "pixel":
+            infer = timing.pixel_method(m.variant.split("/")[0], common.FS, PIXEL_BIN)
+        else:
+            fitted = evaluation(name)
+            infer = timing.facemap_method(
+                m.variant,
+                _require(_runs_path(f"{folder(m)}/facemap/bases.npz")),
+                n_components=fitted["n_components"],
+                lags=np.asarray(fitted["lags"]),
+                seed=0,
+            )
+        for _ in range(WARMUP_PASSES):
+            infer(warm)
+        if m.kind == "network" and dev.type == "cuda":
+            torch.cuda.reset_peak_memory_stats()
+        result = timing.time_method(infer, timed, warm)
+        if m.kind == "network":
             result["params_m"] = sum(p.numel() for p in model.parameters()) / 1e6
             result["peak_gb"] = (
                 torch.cuda.max_memory_allocated() / 1e9 if dev.type == "cuda" else None
             )
             result["device"] = timing.hardware()["gpu"] or "cpu"
-        elif m.kind == "pixel":
-            method = m.variant.split("/")[0]
-            result = timing.time_method(
-                timing.pixel_method(method, common.FS, PIXEL_BIN), timed, warm
-            )
-            result["device"] = "cpu (numpy)"
         else:
-            fitted = evaluation(name)
-            result = timing.time_method(
-                timing.facemap_method(
-                    m.variant,
-                    _require(_runs_path(f"{folder(m)}/facemap/bases.npz")),
-                    n_components=fitted["n_components"],
-                    lags=np.asarray(fitted["lags"]),
-                    seed=0,
-                ),
-                timed,
-                warm,
-            )
             result["device"] = "cpu (numpy)"
+        result["warmup_passes"] = WARMUP_PASSES
         result["run"] = name
         result["video_s"] = [len(np.load(e.times)) / timing.CLIP_FS for e in timed]
         result["when"] = time.strftime("%Y-%m-%d %H:%M")
