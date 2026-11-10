@@ -1,12 +1,12 @@
-author,Conceptualization,Formal analysis,Investigation,Methodology,Resources,Software,Writing---Original Draft,Writing---Reviewing and Editing,Funding acquisition
-VrForaging Platform,,,33,38,42,46,50,,
-Bruno Cruz,,33,38,,,,54,58,
-Laura Driscoll,,38,,,,54,,62,
-Suyee Lee,38,,46,50,,,62,,71
-Tiffany Ona,42,,,,,,67,,75
-Cindy Poo,46,,,,,,71,,79
-Sharmishtaa Seshamani,50,,,,,,75,,83
-Kyle Severson,54,,62,67,,,79,,88
-Scott Sterrett,,62,,,,79,,88,
-Olivia Unokesan,,67,71,,,,88,92,
-Sonya Vasquez,,,75,79,83,88,92,,
+author,Conceptualization,Data curation,Formal analysis,Funding acquisition,Investigation,Methodology,Project administration,Resources,Software,Supervision,Validation,Visualization,Writing – original draft,Writing – review & editing
+VrForaging Platform,0,0,0,0,1,1,1,1,1,1,0,0,0,0
+Bruno Cruz,0,0,1,1,1,0,0,0,0,1,1,1,0,0
+Laura Driscoll,0,1,1,0,0,0,0,0,1,0,0,1,1,0
+Suyee Lee,1,1,0,1,1,1,0,0,0,1,0,0,1,1
+Tiffany Ona,1,1,0,0,0,0,0,0,0,0,1,0,1,1
+Cindy Poo,1,0,0,0,0,0,0,0,0,0,1,0,0,1
+Sharmishtaa Seshamani,1,1,0,0,0,0,0,0,0,0,1,0,1,1
+Kyle Severson,1,1,0,1,1,1,0,0,0,1,0,0,1,1
+Scott Sterrett,0,1,1,0,0,0,0,0,1,0,0,1,1,0
+Olivia Unokesan,0,0,1,1,1,0,0,0,0,1,1,1,0,0
+Sonya Vasquez,0,0,0,0,1,1,1,1,1,1,0,0,0,0

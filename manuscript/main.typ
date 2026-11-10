@@ -129,14 +129,16 @@
 
 // The authors and their contributions, from contributions.csv: one row per author, in
 // the order of the byline (the platform first, then alphabetical by surname), one column
-// per role. A cell is lead, equal or supporting (or a share in percent); empty is none.
+// per CRediT role (https://credit.niso.org). A cell is the author's share of the role,
+// from 0 (or empty) to 1: 1 if they had the role, 0 if not, or anything between.
 #let contributions = csv("contributions.csv")
 #let contribution-roles = contributions.first().slice(1)
 #let author-names = contributions.slice(1).map(row => row.first())
 #let contribution-level(cell) = {
-  let cell = lower(cell.trim())
-  let named = (lead: 100, equal: 50, supporting: 20)
-  if cell == "" { 0 } else if cell in named { named.at(cell) } else { int(cell) }
+  let cell = cell.trim()
+  let x = if cell == "" { 0.0 } else { float(cell) }
+  assert(0 <= x and x <= 1, message: "contributions.csv: a cell is from 0 to 1, not " + cell)
+  x * 100
 }
 
 #show: preprint.with(
@@ -593,7 +595,7 @@ video and the network's predictions #note[repository URL, data DOI (DANDI or the
 // roles; the matrix wants one row per role.
 #contribution-matrix(
   author-names.map(n => [#n]),
-  contribution-roles.map(r => eval(r, mode: "markup")),
+  contribution-roles.map(r => [#r]),
   contribution-roles
     .enumerate()
     .map(((j, _)) => contributions.slice(1).map(row => contribution-level(row.at(j + 1)))),
