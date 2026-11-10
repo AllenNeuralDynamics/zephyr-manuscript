@@ -127,12 +127,25 @@
   place(top + right, dx: -1.5cm, dy: 0.6cm, text(size: 8pt, fill: luma(110))[Built from: #version])
 })
 
+// The authors and their contributions, from contributions.csv: one row per author, in
+// the order of the byline (the platform first, then alphabetical by surname), one column
+// per role. A cell is lead, equal or supporting (or a share in percent); empty is none.
+#let contributions = csv("contributions.csv")
+#let contribution-roles = contributions.first().slice(1)
+#let author-names = contributions.slice(1).map(row => row.first())
+#let contribution-level(cell) = {
+  let cell = lower(cell.trim())
+  let named = (lead: 100, equal: 50, supporting: 20)
+  if cell == "" { 0 } else if cell in named { named.at(cell) } else { int(cell) }
+}
+
 #show: preprint.with(
   title: [Validated inference of respiration from videography in mice],
   short-title: [Zephyr],
-  authors: ((name: "VrForaging Platform", affiliations: ("aind",)),),
+  authors: author-names.map(n => (name: n, affiliations: ("aind",))),
   affiliations: (
-    aind: [Allen Institute for Neural Dynamics, Seattle, WA, USA #note[authors]],
+    aind: [Allen Institute for Neural Dynamics, Seattle, WA, USA #note[authors] \
+      Authors after the VrForaging Platform are listed in alphabetical order.],
   ),
   abstract: [
     Rodents rely on olfaction to survive. Odors guide them to find food, avoid predators,
@@ -574,6 +587,17 @@ quality-control measures. The sessions of the dynamic-foraging experiment and th
 sessions without a thermistor, which are not part of the corpus, are released with their
 video and the network's predictions #note[repository URL, data DOI (DANDI or the Registry of
   Open Data), licence; confirm the corpus can be released].
+
+= Author contribution matrix
+// From contributions.csv (see author-names): its rows are the authors, its columns the
+// roles; the matrix wants one row per role.
+#contribution-matrix(
+  author-names.map(n => [#n]),
+  contribution-roles.map(r => eval(r, mode: "markup")),
+  contribution-roles
+    .enumerate()
+    .map(((j, _)) => contributions.slice(1).map(row => contribution-level(row.at(j + 1)))),
+)
 
 #pagebreak()
 #references(bibliography("references.bib"))
