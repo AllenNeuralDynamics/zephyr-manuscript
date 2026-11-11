@@ -629,9 +629,8 @@ TODO SONYA
 
 == Corpus construction
 
-Sessions were selected with the rules of @tab:qc, in order. Thermistor quality was judged
-in 30-s windows after removing large artifacts (and 2 s around them), and clips were
-cut only from stretches of at least 300 s in which every window passed.
+Sessions were selected with the rules of @tab:qc, in order. Thermistor quality asserted in 30 second windows.
+5min clips were made from stretches where all windows cleared the quality criteria.
 
 #figure(
   table(
@@ -665,33 +664,18 @@ cut only from stretches of at least 300 s in which every window passed.
     with the number of sessions each removed. Of #v("selection.recorded") recorded
     sessions, #v("selection.thermistor") passed the thermistor rules and
     #v("selection.clips") the clip and camera rules; capping each animal's sessions on each
-    rig, so that no animal dominates a set, removed most of the rest. Window rules mark 30-s windows as good
-    or bad and remove no session on their own ("—"). The exception is amplitude, which is
-    also applied to the session as a whole and removed 2,038 sessions. A session
-    without a long enough run of good windows is removed. A repeated event is an
-    inhalation followed by another inhalation, or an exhalation by another exhalation.
-    Timestamps with a single one-frame rollback were repaired (73) rather than
-    removed. Low exposure and two rejected traces were found after the sets were drawn,
-    and those sessions were removed from them, leaving the #v("corpus.sessions") sessions of the
-    corpus. The front camera is optional. A session without its video, because it was
-    never recorded or pointed away from the animal, keeps its face and side clips, so the
-    last two rows count front-camera videos left out, not sessions. The face and side
-    cameras were recorded in every session.],
+    rig, so that no animal dominates a set, removed most of the rest. A repeated event is an
+    inhalation followed by another inhalation, or an exhalation by another exhalation.],
 ) <tab:qc>
 
 _Thermistor events._ Inhalation and exhalation onsets were detected on the thermistor at
-its own rate (200-250 Hz) with an adaptive peak detector. The signal was filtered (zero-phase
+its native rate (200-250 Hz) with an adaptive peak detector. The signal was filtered (zero-phase
 second-order Butterworth, high-pass 1 Hz, low-pass 40 Hz) and z-scored over
 the recording. Maxima at least 50 ms apart were candidate inhalation onsets, and
 minima candidate exhalation onsets. A candidate was kept when its prominence was at least
 0.2 of the local range of the signal (5th to 95th percentile over a centred
-1.5-s window), so that a shallow cycle next to deep ones is kept while small
-ripples on a flat stretch are not. These events were used for training, quality control
+1.5-s window). These events were used for training, quality control
 and scoring.
-
-The additional sessions from the "dynamic foraging" experiment, and the sessions recorded
-without a thermistor (Sessions without a thermistor), are available for download, but are
-not part of the corpus.
 
 == Data splits <sec:data-splits>
 
@@ -719,20 +703,17 @@ Test data was further split into two categories: held-out sessions (sessions fro
 == Preprocessing
 
 For the face camera, frames were downsampled to 360 × 270 pixels, cropped to a 96 × 96-pixel box over the
-snout (one per session), converted to gray and selected on a 60-Hz grid by their
-timestamps, and standardized over the training clips. We note that the network also
-performs well at 30 Hz (@fig:input-rate) but with slightly reduced accuracy. For the side and front cameras,
+snout (one per session), converted to gray and temporally resampled to 60 Hz by taking every Nth frame (4 or 6).
+We note that the network also performs well at 30 Hz (@fig:input-rate) but with slightly reduced accuracy. For the side and front cameras,
 which film the animal from farther away, frames were kept at the native 720 × 540 resolution
-instead, with the same 96 × 96-pixel box over the snout. The target was the thermistor
-filtered as above but high-passed at 0.2 Hz, resampled to 60 Hz and z-scored per
-clip.
+instead, with the same 96 × 96-pixel box over the snout.
 
 == Network architecture
 
 A convolutional encoder, whose first layer spans three frames, embeds each crop
 (@tab:arch); embeddings are interpolated by their timestamps onto a uniform 60-Hz grid, and
 a non-causal temporal convolutional network (receptive field 4.2 s) outputs the
-respiration waveform and an inhalation onset logit at each step (0.86 million parameters).
+respiration waveform and an inhalation onset logit at each step.
 
 #figure(
   table(
@@ -760,8 +741,7 @@ respiration waveform and an inhalation onset logit at each step (0.86 million pa
 The loss was $1 - r$ between the predicted and target waveforms, averaged over three time
 scales (the waveform, and copies average-pooled by 4 and 16 samples), plus 0.5 times a
 binary cross-entropy on inhalation onsets against Gaussians (s.d. 20 ms) centred on the
-thermistor inhalations, with positives weighted by the ratio of negatives to positives in each
-batch. Other settings are in @tab:train; the checkpoint with the highest mean
+thermistor inhalations. Other settings are in @tab:train; the checkpoint with the highest mean
 correlation on the validation clips was kept. Each network was trained once per fold on a NVIDIA Tesla T4. The comparison networks were trained the same way, each with the loss of its original paper
 (Supplementary Note 2).
 
@@ -792,31 +772,21 @@ correlation on the validation clips was kept. Each network was trained once per 
 == Inference and event detection
 
 Clips were predicted in overlapping windows of 1,024 samples, discarding 126
-samples (half the receptive field) at each edge, so that the stitched waveform equals a
-single pass over the clip. Inhalation onsets were the peaks of the inhalation onset probability above
+samples at each edge, so that the stitched waveform equals a
+single pass over the clip. Inhalation onsets were detected as the peaks of the inhalation onset probability above
 a threshold, at least 50 ms apart. The threshold was chosen for each trained network
-on its own validation animals, never on a test set, once early stopping had fixed its
-weights. Each threshold from 0.20 to 0.85 in steps of 0.05 was scored
-by the mean inhalation F1 over the validation clips (@sec:scoring). Thresholds within
-0.002 of the best F1 tied, and of these the one whose inhalations per minute came
-closest to the thermistor's was kept. The network keeps this threshold, and every
-prediction it makes uses it. It was
-#v("threshold.folds") for the five folds' networks. Exhalations, and the inhalations of methods without
+on its own validation animals by sweeping the threshold from 0.20 to 0.85 in steps of 0.05, and scoring
+by the mean inhalation F1 over the validation clips (@sec:scoring). Exhalations, and the inhalations of methods without
 an inhalation onset output ("DSP"), were found on the predicted waveform by the detector used on the
 thermistor, with the same settings (the 40-Hz low-pass does not apply at 60 Hz).
 
 == Benchmarked methods
 
-Every method read the same 96 × 96 gray crops on the 60-Hz grid and was scored by the same
-rules (Scoring). The two pixel methods compute a waveform from each clip's pixels with no
-training, so the waveform has no set polarity or timing relative to respiration. Each waveform was
-therefore band-passed to the respiration band (1–15 Hz) and turned the right way up from its
-own shape: inhalation is shorter than exhalation, so a correct waveform falls faster than it
-rises. A single sign and lag (at most 0.5 s), the same for every clip, were then chosen to
-maximise the mean correlation with the thermistor over the training clips, and applied
-unchanged to the test clips.
+Every method read the same 96 × 96 gray crops at 60 Hz. The two pixel methods compute a waveform from each clip's pixels with no
+For each clip we set the sign and lag (up to 0.5s) that maximized the mean correlation with the thermistor over the training clips. We kept
+the most correlated sign and average lag and applied them to the test clips.
 
-The methods, their sources and what we changed are in @tab:methods. The four networks
+The methods, their re-implementation and what we changed are in @tab:methods. The four networks
 were trained in our training loop on the losses of their own papers (Supplementary
 Note 2); none has an inhalation onset output, so their inhalations were found on the predicted waveform.
 
@@ -867,39 +837,24 @@ NVIDIA RTX 4060 Ti (non-network methods on the CPU, an Intel Core i9-13900K with
 RAM).
 
 == Scoring <sec:scoring>
-
-Predictions and thermistor were compared by time, over the span both cover. Waveforms were
-scored by their Pearson correlation with the target. By default, a predicted event could match a
-thermistor event within 1.5 frames of the prediction (25 ms at 60 Hz). Predicted and thermistor
-events were paired one to one by an optimal assignment on their time differences
-(Hungarian algorithm), restricted to pairs within the tolerance, which maximizes the
-number of matches. Matched pairs were true positives (TP), unmatched predictions false
+We scored predictions against ground truth thermistor signals over the span that both covered. 
+Waveforms were scored by taking the Pearson correlation between the two signals. Events were scored by matching predicted and thermistor events within a tolerance window and computing precision, recall, and F1 score. An event was considered a match if it fell within 1.5 frames of the prediction (25 ms at 60 Hz). We paired 
+each event one to one by matching with an optimal assignment on their time differences using the Hungarian algorithm.
+ Matched pairs were true positives (TP), unmatched predictions false
 positives (FP) and unmatched thermistor events false negatives (FN), and
-$F_1 = 2"TP" \/ (2"TP" + "FP" + "FN")$ was computed per clip. Respiration rate was counted in 10-s windows.
-
-_Error analysis._ An error was a near miss when an error of the other kind lay within
-100 ms. Errors were pooled over each fold's held-out animals (#v("errors.misses") misses
-and #v("errors.false") false inhalations). The tolerance curve pools each fold's #v("tolerance.breaths") thermistor
-cycles. The near-miss example (#fig(<fig:trust>, "b")) is, among the first fold's clips
-of held-out animals with at least the median correlation, the one with the most
-predictions 25–100 ms from a thermistor inhalation, shown where these are densest.
+$F_1 = 2"TP" \/ (2"TP" + "FP" + "FN")$ was computed per clip. 
+Finally, respiration rate was simply the number of inhalations counted in 10-s windows.
 
 == Spatial and temporal receptive fields
 
-For each animal × rig unit of the held-out animals of every
-fold, we took the clip nearest the unit's median waveform correlation, two 8.5-s windows of
-it, and the face network of that fold, and considered only the thermistor inhalations at
-least half a receptive field from a window's edges. For occlusion, a 12 × 12-pixel square
-of the 96 × 96-pixel crop, moved in 6-pixel steps, was set to the training mean in every
-frame; we recorded the drop in the mean inhalation onset probability at the thermistor's
-inhalations, and one minus the correlation of the waveform with the unoccluded one, and
-gave each pixel the mean over the squares covering it. For gradients, we took the
+For occlusion, a 12 × 12-pixel square
+of the 96 × 96-pixel crop, moved in 6-pixel steps, was set to the training mean values in every
+frame and recorded the drop in performance. For gradients, we took the
 absolute gradient of the inhalation onset logit at each thermistor inhalation with respect to every
 input pixel, averaged over frames for the spatial map and summed over pixels for the
 temporal profile. The same network with its weights re-initialised served as a control.
-The temporal profile is the share of an inhalation's gradient carried by
-each frame, in 1/60-s bins of the frame's time from the inhalation, averaged over the
-inhalations of a unit, then over units and folds (@fig:saliency).
+The temporal profile was calculated as the share of an inhalation's gradient carried by
+each frame, in 1/60-s bins (@fig:saliency).
 
 == Generalization experiments
 
@@ -910,31 +865,19 @@ sessions), and #v("size.partial_sessions") sessions drawn from all #v("size.all_
 animals. Each experiment was trained 3 times on a different draw of subset of trials. For the 2 animals condition, 5 networks were trained instead to account for the larger variability.
 
 _Refining on a different task._ The pooled network of the first fold was refined on
-video of a dynamic-foraging experiment, recorded with a side and a bottom camera and a nasal epithelial
-temperature sensor (thermistor), and cut and cropped as the corpus (360 × 270-pixel frames, 96 × 96-pixel
-crops). Training started from the pooled network's checkpoint, with half of each batch
-from the fold's training clips of all three corpus cameras and half from the 8 sessions
+video of "dynamic-foraging" experiments. Training started from the pooled network's checkpoint, with half of each batch
+from the fold's training clips of all three corpus cameras, and half from the 8 sessions
 of 2 animals of that experiment, at a learning rate of 1.5 × 10#super[−4], with the other
 settings of @tab:train. Early stopping and the inhalation onset threshold used the fold's
 validation animals. Both the refined network and the untouched pooled network were
-scored on the #v("refine.clips") clips (#v("refine.sessions") sessions) of a third
-animal of that experiment, and the refined network also on the fold's test sets. The cost
-on the corpus is the refined network minus the pooled one on the same clips, as the
-mean over animal × rig units with a paired 95% bootstrap interval (@fig:refine).
+scored on the #v("refine.clips") clips (#v("refine.sessions") sessions) of a single third
+animal of that experiment.
 
 == Quality control
 
 Each prediction was cut into 30-s windows, and each window was scored with the measures
 of @tab:qc-measures. Each network was calibrated against validation animals by computing the distribution of the metrics against the F1 scores of the validation dataset. A report gives each
 window's measures and their percentiles among the reference's windows.
-
-The measures were tested on predictions known to work and known to fail, all from the
-pooled network of the first fold, before or after refining. Working predictions were its predictions on that
-fold's held-out animals (#v("quality.held_out_windows") windows) and, after refining, on
-the dynamic-foraging experiment's held-out animal (#v("quality.df_clips") clips, scored
-with the refined network's own reference). Failing predictions were its predictions on
-that animal before refining, and on 24 clips of the held-out animals with Gaussian noise
-of standard deviation 16, 32 or 64 gray levels (of 255) added to every frame.
 
 #figure(
   table(
@@ -978,11 +921,8 @@ of standard deviation 16, 32 or 64 gray levels (of 255) added to every frame.
 
     [Higher], bottomrule,
   ),
-  caption: [*Quality-control measures.* Each is computed on every 30-s window from the
-    network's waveform and inhalation onset probability alone, without the thermistor or the video.
-    Reports give each value and its percentile among the reference's validation
-    windows, never a pass or fail. "Better" is the direction a working prediction tends
-    to score. \*Shown in @fig:trust e and @fig:application a; every measure is in @fig:qc-all.],
+  caption: [*Quality-control measures.*
+    \*Shown in @fig:trust e and @fig:application a; every measure is in @fig:qc-all.],
 ) <tab:qc-measures>
 
 == Sessions without a thermistor
@@ -993,15 +933,11 @@ network trained on all three cameras of the first fold, at its inhalation onset 
 
 == Statistics <sec:statistics>
 
-The unit of analysis is an animal on one rig, whose sessions share the implant, camera
-position and lighting; two rigs of one animal differ in score about two-thirds as much as
-two animals on one rig (@fig:rigs). Scores were averaged over a unit's clips, then over a fold's units,
+We choose to use the animal × rig unit as the primary unit of analysis since we found significant variability between rigs of the same animal.(@fig:rigs) 
+Scores were averaged over a unit's clips, then over a fold's units,
 and reported as the mean over the 5 folds with a 95% bootstrap interval over folds; differences between
 methods are paired by fold. Analyses of a single fold
-use a percentile bootstrap over units (2,000 draws). F1 by rate, F1 against
-tolerance and the error profile pool each fold's cycles before averaging over folds; the
-inhalation onset lag and rate agreement pool all folds and carry no interval. #note[units of one animal are not independent of each other; check intervals
-  with a bootstrap that resamples animals and then units within them]
+use a percentile bootstrap over units (2,000 draws).
 
 #pagebreak()
 #show: supplement
