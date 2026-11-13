@@ -250,7 +250,7 @@ Respiration from our dataset spanned a wide and representative range for mice: #
 
 Our goal was to infer respiration from conventional videography alone, so that respiration can be measured in animals without an implanted sensor. A useful method must recover both the respiration waveform and the timing of each inhalation, and must keep doing so in animals it was never trained on.
 
-First, we asked whether the signals that current tools extract from face video can be used to track respiration. Motion energy, the mean absolute difference between frames, is the most common summary of facial movement @stringer2019 @musall2019. Even after fitting a sign and lag on the training clips, it could not predict respiration in held-out mice
+First, we asked whether the signals that current tools extract from face video can be used to track respiration. Motion energy, the mean absolute difference between frames, is the most common summary of facial movement @stringer2019 @musall2019. Even after fitting, on the training clips, the sign and time lag that best match it to the thermistor, it could not predict respiration in held-out mice
 ($r = #v("benchmark.motion_r")$; #fig(<fig:benchmark>, "a,b")\; @tab:benchmark). A linear readout of
 the leading facial motion principal components, as in Facemap @syeda2024, performed better but still recovered only part of the
 signal ($r = #v("benchmark.facemap_r")$, inhalation F1 #v("benchmark.facemap_f1")).
@@ -260,9 +260,9 @@ We thus wondered if this class of methods would perform better on held-out mice 
 We started from the state-of-the-art in camera-based physiological measurement methods, four networks developed to recover pulse
 and respiration from human face video: TS-CAN @liu2020, PhysNet @yu2019, PhysFormer @yu2022
 and RhythmFormer @zou2025. We trained each on the same clips under the same protocol, reading in
-a 96 × 96 grayscale crop over the snout and predicting the thermistor waveform (#link(<sec:methods>)[Methods]).
-These networks are built for long, slowly varying signals, in particular the two transformers are
-large and slow to run.
+a 96 × 96 grayscale crop over the snout from the face camera view, and predicting the thermistor waveform (#link(<sec:methods>)[Methods]).
+These networks are designed for long, slowly varying signals. The two transformers are,
+in addition, large and slow to run.
 
 We therefore propose a smaller and more efficient architecture called Zephyr. Zephyr encodes each frame with a small convolutional neural network (CNN), in series
 with a temporal convolutional network (TCN) that models respiration over time. Additionally, we endowed Zephyr with a second head
@@ -274,8 +274,9 @@ To measure how well methods generalize, for all analyses, we held out whole anim
 
 We scored each method on held-out animals, never seen in training, in a five-fold
 cross-validation in which each of #v("benchmark.animals_a") animals is held out once
-(#link(<sec:methods>)[Methods], @tab:split). Scores were averaged within each animal on one rig before
-comparison (#v("benchmark.units_a") animal × rig units; #link(<sec:methods>)[Methods], @sec:statistics).
+(#link(<sec:methods>)[Methods], @tab:split). Because generalization depends on both the animal and the
+recording setup (@fig:rigs), we treat each animal × rig combination as one unit of comparison: scores were
+averaged within each one of these units before comparison (#v("benchmark.units_a") units; #link(<sec:methods>)[Methods], @sec:statistics).
 Every network recovered respiration on held-out animals (#fig(<fig:benchmark>, "b")\;
 @tab:benchmark\; an example in #fig(<fig:overview>, "e")), so respiration can indeed be learned from
 face video in mice. Zephyr and PhysNet showed similar inhalation detection performance. Their F1
@@ -308,7 +309,7 @@ We also compared respiration rate, counted in 10-s windows, with the thermistor'
 #figure(
   fit(fig3),
   caption: [*Neural network methods faithfully recover respiration dynamics.* *a,*
-    Six seconds of one clip of a held-out animal, predicted by each method. The
+    Six seconds of one clip of a held-out animal (face camera), predicted by each method. The
     thermistor is at the top and each method's waveform is drawn over it in grey. Vertical
     lines mark the thermistor's inhalations. Panels *b–e* show the results from held-out animals across folds, #v("rate.clips") clips from #v("rate.sessions") sessions of #v("rate.animals")
     animals. *b,* Inhalation F1 scores on new animals against
@@ -321,7 +322,7 @@ We also compared respiration rate, counted in 10-s windows, with the thermistor'
   kind: table,
   // Written by notebooks/manuscript_figures.py (new animals, over folds, seed 17).
   benchmark-table("tables/benchmark.csv"),
-  caption: [*Method comparison on held-out animals.* Each score was averaged within each
+  caption: [*Method comparison on held-out animals from the face camera view.* Each score was averaged within each
     animal × rig unit, then over the held-out-animal units of a split, then over splits. Values
     are the mean with its 95% interval over the #v("benchmark.folds") cross-validation
     folds (#v("benchmark.units_a") units of #v("benchmark.animals_a") animals, each animal
@@ -344,8 +345,7 @@ its training animals (#link(<sec:methods>)[Methods], @tab:split). All networks r
 high waveform correlation and inhalation F1, and, although relatively lower, their scores on
 held-out animals remained high (#fig(<fig:general>, "a")\; @tab:benchmark,
 @tab:benchmark-b). We emphasize that this generalization depends on both the animal and the
-recording setup (@fig:rigs). Thus, for most analyses we treat each animal × rig combination as
-one unit of comparison.
+recording setup (@fig:rigs).
 Zephyr scored the highest among the networks on both new sessions (inhalation F1
 #v("benchmark.f1_b"), waveform correlation #v("benchmark.r_b")) and held-out animals (#v("benchmark.f1")
 and #v("benchmark.r")). Inhalation F1 generalized more robustly than waveform correlation: from
@@ -384,9 +384,8 @@ Together, these results show that Zephyr can be trained from different views and
 effectively to unseen data from similar experimental conditions without requiring extensive training data.
 
 However, whether the network generalizes to data from different experimental setups
-remained an open question. We used an independent dataset, "dynamic-foraging task"
-@su2026, in
-which the faces of head-fixed mice were filmed from the side and from below (#fig(<fig:general>, "g")), to
+remained an open question. We used an independent dataset @su2026, in which mice performed a "dynamic foraging task" and
+the faces of head-fixed mice were filmed from the side and from below (#fig(<fig:general>, "g")), to
 evaluate how well Zephyr pre-trained on our corpus performed on these sessions. On a held-out animal, it was not able to directly track respiration (inhalation
 F1 #v("refine.f1_before_side") from the side and #v("refine.f1_before_bottom") from below). Given our previous success on generalizing to new animals with little data, we next asked
 whether a small amount of additional training videos from this new setup could improve
@@ -420,10 +419,11 @@ A method that replaces a sensor will be used where no sensor can check it, so it
 must be predictable and calibrated. We therefore sought to understand the conditions under which Zephyr's predictions are reliable and how to quantify its confidence in the absence of ground-truth data.
 
 By far the most common errors were relatively small timing mismatches between predicted and
-thermistor inhalations, rather than missed or hallucinated inhalations. Relaxing the matching
-tolerance from 25 to 50 ms raised Zephyr's inhalation F1 from #v("tolerance.f1_25") to
+thermistor inhalations, rather than missed or hallucinated inhalations. A predicted inhalation
+counts as correct if it falls within a matching tolerance (by default 25 ms) of a thermistor
+inhalation. Relaxing this tolerance from 25 to 50 ms raised Zephyr's inhalation F1 from #v("tolerance.f1_25") to
 #v("tolerance.f1_50"), and the remaining errors fell from #v("tolerance.errors_25")% to
-#v("tolerance.errors_50")% of cycles (#fig(<fig:trust>, "a")).
+#v("tolerance.errors_50")% of cycles (#fig(<fig:trust>, "a,b")).
 
 Timing also explained most of the loss of accuracy in slow breathing
 (#fig(<fig:benchmark>, "c")). At 2–3 Hz, Zephyr found #v("slow.within_25_slow")% of the
@@ -446,7 +446,7 @@ We calculated metrics (see methods) that we find reliably predict inference qual
 well the inhalation onset head's inhalations agree with the peaks of the network's own waveform (head vs
 waveform F1); 2. how often inhalations and exhalations fail to alternate; 3. how high the inhalation onset
 peaks are; and 4. how high the inhalation onset probability stays between them
-(#link(<sec:methods>)[Methods], @tab:qc-measures). Using validation data, we calibrated these scores. Next, we generated surrogate "bad" predictions by systematically adding noise to videos that progressively lower the network's accuracy. Finally, for comparison we also add the scores of the "dynamic foraging" dataset. We found that the scores tracked the true accuracy. With noise of 16 gray levels, inhalation
+(#link(<sec:methods>)[Methods], @tab:qc-measures). Using validation data, we calibrated these scores. Next, we generated surrogate "bad" predictions by systematically adding Gaussian pixel noise to the videos (standard deviation of 16, 32 and 64 gray levels), which progressively lowers the network's accuracy. Finally, for comparison we also add the scores of the "dynamic foraging" dataset. We found that the scores tracked the true accuracy. With noise of 16 gray levels, inhalation
 F1 barely changed (#v("quality.noise16_truth_inhale_f1") against
 #v("quality.validation_truth_inhale_f1") on validation animals), and the scores stayed close
 to their validation range. At 32 gray levels and beyond, F1 collapsed
@@ -457,7 +457,7 @@ predictions behaved the same way. Before refining, the network found almost none
 experiment's inhalations (true F1 #v("quality.df_unrefined_truth_inhale_f1")), its head vs
 waveform F1 fell to #v("quality.df_unrefined_head_trace_f1") and the inhalation onset probability between
 inhalations rose from #v("quality.validation_onset_background") to
-#v("quality.df_unrefined_onset_background"). After refining, the same network scored as well on these
+#v("quality.df_unrefined_onset_background"). After refining (i.e. retraining the network on the corpus plus two dynamic-foraging animals, as above), the same network scored as well on these
 videos as it did on the corpus (#fig(<fig:trust>, "c,e")). The proposed metrics can thus separate
 predictions that work from known failures without implanting a thermistor.
 
