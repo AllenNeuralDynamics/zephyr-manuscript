@@ -5,14 +5,17 @@ on:
   push:
     branches:
       - main
+  release:
+    types: [published]
   workflow_dispatch:
 
 jobs:
   manuscript:
     runs-on: ubuntu-latest
-    name: Build manuscript PDF
+    name: Build manuscript PDF and Word
     permissions:
-      contents: read
+      # write is needed only to attach files to a release
+      contents: write
     steps:
       - uses: actions/checkout@v7
         with:
@@ -62,6 +65,16 @@ jobs:
           archive: false
           if-no-files-found: error
           retention-days: 30
+
+      - name: Attach PDF and Word to the release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          cp "${{ runner.temp }}/manuscript.pdf" "zephyr-${TAG}.pdf"
+          cp "${{ runner.temp }}/manuscript.docx" "zephyr-${TAG}.docx"
+          gh release upload "$TAG" "zephyr-${TAG}.pdf" "zephyr-${TAG}.docx" --clobber
 
       - name: Assemble the web page
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
