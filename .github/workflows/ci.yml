@@ -129,7 +129,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
 
       - name: Install python dependencies
-        run: uv sync --python 3.13--all-packages --extra cpu
+        run: uv sync --python 3.13 --all-packages --extra cpu
 
       - name: Run ruff format
         run: uv run ruff format --check
