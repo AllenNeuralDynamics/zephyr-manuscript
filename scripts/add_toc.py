@@ -68,11 +68,10 @@ def add_toc(html: str) -> str:
         sys.exit("add_toc: no <h2>/<h3> headings found")
 
     items = "".join(
-        f'<li class="l{level}"><a href="#{hid}">{escape(text)}</a></li>' for level, hid, text in entries
+        f'<li class="l{level}"><a href="#{hid}">{escape(text)}</a></li>'
+        for level, hid, text in entries
     )
-    toc = (
-        f'{STYLE}<details id="toc"><summary>Contents</summary><ol>{items}</ol></details>{OPEN_WHEN_WIDE}'
-    )
+    toc = f'{STYLE}<details id="toc"><summary>Contents</summary><ol>{items}</ol></details>{OPEN_WHEN_WIDE}'
 
     # After the PDF/Word links when they are there, else straight after <body>.
     m = LINKS.search(html) or re.search(r"<body[^>]*>", html)
