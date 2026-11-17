@@ -88,6 +88,8 @@ jobs:
           sed -i "0,/<body>/s||<body>${link}|" site/index.html
           grep -q 'href="zephyr.pdf"' site/index.html
           grep -q 'href="zephyr.docx"' site/index.html
+          python3 scripts/add_toc.py site/index.html
+          grep -q 'id="toc"' site/index.html
 
       - uses: actions/upload-pages-artifact@v4
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
