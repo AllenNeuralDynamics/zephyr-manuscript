@@ -564,16 +564,46 @@ with video of the face.
 
 #set par.line(numbering: none)
 
-= Data and code availability
+= Data availability
 
 We release the corpus (face, side and front video, frame timestamps and the thermistor,
-on one clock) with the splits we used, the code, the trained weights, an evaluation that
-reproduces the scores reported here, and an application that runs the network on new
-recordings: it places a crop box on each recording, predicts respiration and reports the
-quality-control measures. The sessions of the dynamic-foraging experiment and the
-sessions without a thermistor, which are not part of the corpus, are released with their
-video and the network's predictions #note[repository URL, data DOI (DANDI or the Registry of
-  Open Data), licence; confirm the corpus can be released].
+on one clock) with the splits we used and the trained weights.
+= Code availability
+
+The code for Zephyr (training, inference, scoring and the quality-control measures) is
+at https://github.com/AllenNeuralDynamics/zephyr, with an application that runs the
+network on new recordings: it places a crop box on each recording, predicts respiration
+and reports the quality-control measures. The reimplementations of the comparison
+methods, the experiment configurations, an evaluation that reproduces the scores reported
+here, and the notebooks that generate every figure, table and reported value of this
+paper from the results are at https://github.com/AllenNeuralDynamics/zephyr-manuscript.
+Data were acquired with the VrForaging platform
+(https://github.com/AllenNeuralDynamics/Aind.Behavior.VrForaging), using Bonsai @lopes2015 and Harp devices (https://harp-tech.org) @harp.
+
+= AI declaration
+
+The code for Zephyr, the reimplementations of the comparison methods, and the notebooks used to analyse the data and generate the figures (all written in Python) were developed iteratively with Claude Opus (Anthropic) acting as a coding assistant. The authors designed the network, the experiments, the comparisons and
+the analyses, and specified them in detail; Claude implemented them in code under the
+authors' direction. The authors reviewed and tested this code and verified that it
+performs the intended analyses and that the outputs accurately represent the underlying
+data. The scientific questions, the interpretation of the results and the conclusions are the authors' own.
+The authors take full responsibility for the content of this manuscript.
+
+= Acknowledgments
+
+We thank Lukas Braun for discussions on the design and implementation of the experiments. We also thank Shalaika Akella for reviewing a draft of the manuscript.
+
+= Funding
+
+This work was funded by the Allen Institute #note[grants, if any].
+
+= Competing interests
+
+The authors declare no competing interests #note[confirm with every author].
+
+= Author contributions
+
+#tbd[Fill in the author contributions using the CRediT taxonomy.]
 
 = Author contribution matrix
 // From contributions.csv (see author-names): its rows are the authors, its columns the
@@ -603,7 +633,7 @@ frontonasal suture and #tbd[0.5] mm right of the midline, and the thermistor tip
 lowered onto the epithelium without pressing on it. The hole was sealed with silicone
 (Kwik-Cast), and the probe and a head bar were fixed with dental cement (Metabond).
 
-_Data acquisition._ Data were acquired on the VrForaging platform (https://github.com/AllenNeuralDynamics/Aind.Behavior.VrForaging), whose devices are synchronized by the Harp protocol (https://harp-tech.org). For this dataset, a Behavior board (https://github.com/harp-tech/device.behavior)
+_Data acquisition._ Data were acquired on the VrForaging platform (https://github.com/AllenNeuralDynamics/Aind.Behavior.VrForaging), whose devices are synchronized by the Harp protocol (https://harp-tech.org) @harp. For this dataset, a Behavior board (https://github.com/harp-tech/device.behavior)
 triggered the 240- or 360-Hz FLIR cameras, a custom-built olfactometer (https://github.com/harp-tech/device.olfactometer) delivered odors and
 a sniff-detector board (described below) recorded the thermistor. Video was encoded in real time
 with H.264 on the GPU (NVENC, constant quality 18) and re-encoded offline on the CPU
