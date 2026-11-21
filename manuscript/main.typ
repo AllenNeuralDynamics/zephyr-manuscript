@@ -350,8 +350,7 @@ three cameras, allowing us to compare the performance of Zephyr across viewpoint
 the face camera, a side and a front camera film the whole animal from farther away and at
 different angles (@fig:views). Trained with the same protocol, Zephyr recovered respiration from both
 views on new animals, though less accurately than from the face camera
-(#fig(<fig:general>, "d,e")\; @fig:cameras, @tab:cameras) #note[side and front:
-  fold cv_0 only so far; the other folds are training].
+(#fig(<fig:general>, "d,e")\; @fig:cameras, @tab:cameras).
 
 Networks trained on large and diverse data often generalize better than specialized ones,
 as foundation models for vision @oquab2023dinov2 and for animal pose estimation pooled
