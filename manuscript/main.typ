@@ -157,7 +157,7 @@
     and recognize mates and kin. As mice actively sample odors via sniffing, the timing of
     each inhalation shapes odor perception. Ground-truth methods for measuring respiration in mice
     typically rely on sensors implanted in the nasal cavity, which require invasive surgery, and often fail to yield a reliable signal. Here, we developed a ground-truth-validated deep-learning method and show that the respiration waveform and
-    the timing of each inhalation can be recovered directly from videography. We also provide a corpus
+    the timing of each inhalation can be recovered directly from videography. We also provide a dataset
     of #v("corpus.sessions") curated sessions from #v("corpus.animals") head-fixed mice
     performing an olfactory foraging task, in which behavioral videos are
     synchronized with a nasal epithelial temperature sensor that provided ground-truth measurement of respiration.
@@ -204,19 +204,19 @@ signals, whereas a mouse changes its respiration rate several-fold within a seco
 has been shown to reconstruct the respiration waveform and timing of each inhalation from
 conventional videography in rodents, and no public dataset exists to develop and test such a method.
 
-To fill this gap, we assembled a corpus that pairs multi-view videos with synchronized nasal epithelial temperature
+To fill this gap, we assembled a dataset that pairs multi-view videos with synchronized nasal epithelial temperature
 sensor (thermistor) recordings from #v("corpus.sessions") sessions in #v("corpus.animals")
 head-fixed mice on #v("corpus.rigs") behavioral rigs. We tested computer-vision and deep learning methods
 for recovering respiration from the video. Our network, which we call Zephyr, not only recovered the timing of each inhalation in
 held-out animals but was also able to faithfully reconstruct the thermistor waveform. Zephyr performed well when trained across several camera views,
 and, after retraining on a small amount of new data, generalized to new experimental conditions.
 Finally, we show that curated quality-control scores computed from Zephyr's
-output alone can be used to evaluate each prediction, generating confidence metrics of respiration signals extracted from videography in place of surgically implanted sensors. We release the dataset, #margin-note[corpus would be non-standard i think] the
+output alone can be used to evaluate each prediction, generating confidence metrics of respiration signals extracted from videography in place of surgically implanted sensors. We release the dataset, the
 code, as well as trained models, for others to use and refine on their own data.
 
 = Results
 
-== A corpus #margin-note[consider changing to dataset everywhere?] of orofacial video paired with nasal epithelial temperature sensor recordings
+== A dataset of orofacial video paired with nasal epithelial temperature sensor recordings
 
 We trained head-fixed mice to perform an olfactory virtual-reality foraging task on a circular
 treadmill: thirsty mice traversed a virtual corridor with odor-cued sites and could stop at a site to
@@ -227,7 +227,7 @@ face and front cameras through a hot mirror in front of the screen (#fig(<fig:ov
 (#link(<sec:methods>)[Methods]). The task drew a wide range of respiration within each session,
 from breathing at rest to fast sniffing (#fig(<fig:overview>, "b")).
 
-After quality control of the thermistor (#link(<sec:methods>)[Methods], @fig:corpus), the corpus
+After quality control of the thermistor (#link(<sec:methods>)[Methods], @fig:corpus), the dataset
 holds #v("corpus.sessions") sessions from #v("corpus.animals") mice on #v("corpus.rigs") rigs, about
 #v("corpus.hours") h of video per camera (#fig(<fig:overview>, "c")). Respiration spanned the range
 of the mouse: #v("rates.slow")% of cycles were at 2–4 Hz, #v("rates.medium")% at 4–8 Hz and
@@ -239,16 +239,16 @@ of the mouse: #v("rates.slow")% of cycles were at 2–4 Hz, #v("rates.medium")% 
     the nasal cavity.* *a,* One session seen by the face, side and front cameras. Boxes, the
     crop each camera's network reads. *b,* Thirty seconds of one session of a held-out animal: running velocity, the
     thermistor, and the respiration rate counted from its inhalations, with licks (ticks),
-    reward (triangle) and odor sites (shading). *c,* The corpus and the sets of each
+    reward (triangle) and odor sites (shading). *c,* The dataset and the sets of each
     cross-validation fold (#link(<sec:methods>)[Methods]; @tab:split). *d,* Respiration rate over
-    the thermistor's cycles at 2–15 Hz, for the whole corpus (black; n = #v("rates.breaths")
+    the thermistor's cycles at 2–15 Hz, for the whole dataset (black; n = #v("rates.breaths")
     cycles) and each animal (grey; n = #v("rates.animals")).],
 ) <fig:overview>
 
 == Neural networks recover respiration from video
 
 Our goal was to infer respiration from conventional videography alone, so that respiration can be measured in animals without an implanted sensor. A useful method must recover both the respiration waveform and the timing of each inhalation in animals it was never trained on.
-First, we asked whether the signals that current tools extract from face video can track respiration. We scored inhalation timing with the F1 score, which balances the fraction of detected inhalations that were real (precision) against the fraction of real inhalations that were detected (recall); a detection counted as correct if it fell within 25 ms of a thermistor inhalation (#link(<sec:methods>)[Methods])#margin-note[I'm not sure if this is the right place but you need a definition before mentioning i think.]. The most common summary of facial movement is motion energy, the mean absolute difference between frames @stringer2019 @musall2019. Even when we fit its sign and time lag to the thermistor on the training clips, motion energy failed to predict respiration in held-out mice ($r = #v("benchmark.motion_r")$; #fig(<fig:benchmark>, "a,b")\; @tab:benchmark).  A linear readout of the leading facial motion principal components, as in Facemap @syeda2024, did better but still recovered only part of the signal ($r = #v("benchmark.facemap_r")$, inhalation F1 #v("benchmark.facemap_f1")) #margin-note[why f1 here and just r for face motion?].
+First, we asked whether the signals that current tools extract from face video can track respiration. We scored inhalation timing with the F1 score, which balances the fraction of detected inhalations that were real (precision) against the fraction of real inhalations that were detected (recall); a detection counted as correct if it fell within 25 ms of a thermistor inhalation (#link(<sec:methods>)[Methods])#margin-note[I'm not sure if this is the right place but you need a definition before mentioning i think.]. The most common summary of facial movement is motion energy, the mean absolute difference between frames @stringer2019 @musall2019. Even when we fit its sign and time lag to the thermistor on the training clips, motion energy failed to predict respiration in held-out mice ($r = #v("benchmark.motion_r")$, inhalation F1 #v("benchmark.motion_f1"); #fig(<fig:benchmark>, "a,b")\; @tab:benchmark).  A linear readout of the leading facial motion principal components, as in Facemap @syeda2024, did better but still recovered only part of the signal ($r = #v("benchmark.facemap_r")$, inhalation F1 #v("benchmark.facemap_f1")).
 
 Deep-learning methods have been shown to recover periodic physiological signals from human video.
 We thus wondered if this class of methods would perform better on held-out mice and sessions.
@@ -367,7 +367,7 @@ against #v("benchmark.r_b") to #v("benchmark.r") for its waveform correlation, a
 majority of held-out samples scored above 0.9 (#fig(<fig:general>, "b")).
 
 Since not all experiments record the same camera view, we next asked whether respiration
-can be extracted from the other recorded angles. Each session of our corpus was filmed by
+can be extracted from the other recorded angles. Each session of our dataset was filmed by
 three cameras, allowing us to compare the performance of Zephyr across viewpoints. Besides
 the face camera, a side and a front camera film the whole animal from farther away and at
 different angles (@fig:views). Trained with the same protocol, Zephyr recovered respiration from both
@@ -397,10 +397,10 @@ effectively to unseen data from similar experimental conditions without requirin
 
 However, whether the network generalizes to data from different experimental setups
 remained an open question. We used an independent dataset @su2026, in which mice performed a dynamic foraging task where the faces of head-fixed mice were filmed from the side and from below (#fig(<fig:general>, "g")), to
-evaluate how well Zephyr pre-trained on our corpus performed on these sessions. On a held-out animal, it was not able to directly track respiration (inhalation
+evaluate how well Zephyr pre-trained on our dataset performed on these sessions. On a held-out animal, it was not able to directly track respiration (inhalation
 F1 #v("refine.f1_before_side") from the side and #v("refine.f1_before_bottom") from below). Given our previous success on generalizing to new animals with little data, we next asked
 whether a small amount of additional training videos from this new setup could improve
-performance. We retrained the network on the corpus expanded with two animals recorded in the dynamic foraging task and predicted on the third held-out animal. Both
+performance. We retrained the network on the dataset expanded with two animals recorded in the dynamic foraging task and predicted on the third held-out animal. Both
 measures improved markedly from both camera angles, to an inhalation F1 of
 #v("refine.f1_after_side") and #v("refine.f1_after_bottom") and a waveform correlation of
 #v("refine.r_after_side") and #v("refine.r_after_bottom") (#fig(<fig:general>, "h,i")), while
@@ -420,7 +420,7 @@ can be refined with little data to adapt to new experimental conditions.
     refined on a dynamic-foraging experiment. *g* F1 scores of a held-out animal (3 animals in total with "leave-one-out") on its
     side and bottom views with their crops. *h* 12 s of one clip with the ground-truth thermistor
     (black), and the output of the refined network (colored as *g*). *i* correlation and
-    inhalation F1 before and after refining, per held-out animal. #margin-note[remove edge colors on marker. redundant with axes labels.]]
+    inhalation F1 before and after refining, per held-out animal.]
 ) <fig:general>
 
 == Quality-control on predictions without ground-truth sensor data
@@ -445,7 +445,7 @@ tolerance of 10% of each cycle, Zephyr found #v("slow.within_cycle_slow")% of in
 2–3 Hz and #v("slow.within_cycle_fast")% at 10–12 Hz, where 10% of the cycle is shorter
 than one video frame. A fixed 25-ms tolerance is thus strictest for slow breathing, which
 Zephyr times more precisely than fast breathing relative to the cycle. Some of the remaining
-false inhalations in slow breathing may be shallow cycles that the corpus detector does not
+false inhalations in slow breathing may be shallow cycles that the thermistor detector does not
 label reliably. Relatedly, lowering the ground-truth detector's prominence threshold added #v("slow.added_slow")% more
 inhalations at 2–3 Hz and #v("slow.added_mid")% at 6–8 Hz (@fig:slow). In other words, depending on the scientific question, temporal precision may be sacrificed for overall detection sensitivity, especially at lower breathing rates.
 
@@ -467,8 +467,8 @@ predictions behaved the same way. Before refining, the network found almost none
 experiment's inhalations (true F1 #v("quality.df_unrefined_truth_inhale_f1")), its head vs
 waveform F1 fell to #v("quality.df_unrefined_head_trace_f1") and the inhalation onset probability between
 inhalations rose from #v("quality.validation_onset_background") to
-#v("quality.df_unrefined_onset_background"). After refining (i.e. retraining the network on the corpus plus two dynamic-foraging animals, as above), the same network scored as well on these
-videos as it did on the corpus (#fig(<fig:trust>, "c,e")). The proposed metrics can thus separate
+#v("quality.df_unrefined_onset_background"). After refining (i.e. retraining the network on the dataset plus two dynamic-foraging animals, as above), the same network scored as well on these
+videos as it did on our dataset (#fig(<fig:trust>, "c,e")). The proposed metrics can thus separate
 predictions that work from known failures without implanting a thermistor.
 
 #figure(
@@ -527,7 +527,7 @@ predictions thus carry the relationship between respiration and behavior.
 
 = Discussion
 
-We provide a corpus that pairs orofacial video with a nasal epithelial temperature sensor in
+We provide a dataset that pairs orofacial video with a nasal epithelial temperature sensor in
 behaving mice, and a network Zephyr that successfully recovers inhalation in animals it has never seen. It recovered the thermistor waveform and the timing of each inhalation onset with high accuracy and temporal precision. We show that signals that current behavioural tools extract from facial motion did
 not faithfully recover respiration, so a "sniffing" component of facial motion should not be equated with
 respiration without a sensor to validate it.
@@ -557,7 +557,7 @@ known to work and known to fail, allow the user to set their own thresholds.
 
 Adopting Zephyr therefore requires little beyond the videography many head-fixed laboratories already collect. A laboratory first runs the pre-trained network on its own recordings and uses the quality-control measures to check whether the predictions are reliable for its setup. If they are not, the network can be refined with a small amount of ground-truth data from the laboratory's own rig: a few animals recorded with video and a nasal epithelial temperature sensor (2 to 4 animals sufficed in our experiments). Once refined, Zephyr runs efficiently on a consumer-grade GPU, and no sensor is needed in subsequent animals.
 
-The corpus also limits what we can claim. All mice were head-fixed, so the camera saw the
+The dataset also limits what we can claim. All mice were head-fixed, so the camera saw the
 face from a fixed distance and angle, and the animal could not turn away, rear or groom
 freely. Whether respiration can be read from video in freely moving mice remains untested.
 Head-mounted cameras, which already film the eyes and face of freely moving mice during
@@ -578,7 +578,7 @@ settings with little or no further labelling @ye2024superanimal, and general-pur
 visual foundation models @oquab2023dinov2 may provide features from which respiration can
 be read with fewer labels. Camera physiology in humans advanced on shared datasets and
 benchmarks recorded across groups @liu2023toolbox, and networks that excel on one dataset
-often fail on another. We release the corpus in a format upon which other labs' recordings can be added, so that a benchmark spanning rigs,
+often fail on another. We release the dataset in a format upon which other labs' recordings can be added, so that a benchmark spanning rigs,
 tasks, strains and freely moving animals can be built from recordings that pair a sensor
 with video of the face.
 
@@ -586,7 +586,7 @@ with video of the face.
 
 = Data availability
 
-We release the corpus (face, side and front video, frame timestamps and the thermistor,
+We release the dataset (face, side and front video, frame timestamps and the thermistor,
 on one clock) with the splits we used and the trained weights.
 = Code availability
 
@@ -665,7 +665,7 @@ For the "dynamic foraging" experiment, a similar setup to the one described prev
 == Sniff-detector board
 TODO SONYA
 
-== Corpus construction
+== Dataset construction
 
 Sessions were selected with the rules of @tab:qc, in order. Thermistor quality asserted in 30 second windows.
 5min clips were made from stretches where all windows cleared the quality criteria.
@@ -698,7 +698,7 @@ Sessions were selected with the rules of @tab:qc, in order. Thermistor quality a
     [], [#v("optional_cameras.front_not_recorded")], [], [Not on the animal (manual review)],
     [], [#v("optional_cameras.front_reviewed")], bottomrule,
   ),
-  caption: [*Corpus selection.* Rules are listed in the order they were applied,
+  caption: [*Dataset selection.* Rules are listed in the order they were applied,
     with the number of sessions each removed. Of #v("selection.recorded") recorded
     sessions, #v("selection.thermistor") passed the thermistor rules and
     #v("selection.clips") the clip and camera rules; capping each animal's sessions on each
@@ -907,7 +907,7 @@ animals. Each experiment was trained 3 times on a different draw of subset of tr
 
 _Refining on a different task._ The pooled network of the first fold was refined on
 video of "dynamic-foraging" experiments. Training started from the pooled network's checkpoint, with half of each batch
-from the fold's training clips of all three corpus cameras, and half from the 8 sessions
+from the fold's training clips of all three cameras of the dataset, and half from the 8 sessions
 of 2 animals of that experiment, at a learning rate of 1.5 × 10#super[−4], with the other
 settings of @tab:train. Early stopping and the inhalation onset threshold used the fold's
 validation animals. Both the refined network and the untouched pooled network were
@@ -970,7 +970,7 @@ window's measures and their percentiles among the reference's windows.
 
 The face videos of #v("application.sessions") task
 sessions of #v("application.animals") mice without a thermistor were predicted with the
-network trained on all three cameras of the first fold, at its inhalation onset threshold. Other than the thermistor signal, all data acquisition progressed identically to the original corpus. The side and front videos of the same sessions (@fig:application-cameras) were predicted the same way.
+network trained on all three cameras of the first fold, at its inhalation onset threshold. Other than the thermistor signal, all data acquisition progressed identically to the original dataset. The side and front videos of the same sessions (@fig:application-cameras) were predicted the same way.
 
 == Statistics <sec:statistics>
 
@@ -1085,7 +1085,7 @@ batch, steps per epoch and learning rate are in @tab:nets #note[confirm how the 
 
 #figure(
   fit(figs10),
-  caption: [*Selection of the corpus.* *a,* Selection of the recorded sessions. Each step
+  caption: [*Selection of the dataset.* *a,* Selection of the recorded sessions. Each step
     removes the sessions that failed a rule, labelled by the first rule they failed (rules
     and thresholds in @tab:qc). *b,* Number of sessions per animal, colored by the number of
     rigs the animal was recorded on (n = #v("corpus.animals") animals, #v("corpus.sessions")
@@ -1131,7 +1131,7 @@ batch, steps per epoch and learning rate are in @tab:nets #note[confirm how the 
 
 #figure(
   fit(figs4),
-  caption: [*Representative frames from corpus* First frames of the face, side and front cameras in
+  caption: [*Representative frames from the dataset.* First frames of the face, side and front cameras in
     #v("views.sessions") representative sessions, each labelled by its session name, with
     the network's crop box outlined (#link(<sec:methods>)[Methods]).],
 ) <fig:views>
@@ -1169,7 +1169,7 @@ batch, steps per epoch and learning rate are in @tab:nets #note[confirm how the 
 
 #figure(
   fit(figs7),
-  caption: [*Refining on a different task costs little on the corpus.* The network of
+  caption: [*Refining on a different task costs little on the original dataset.* The network of
     #fig(<fig:general>, "f") after refining on the dynamic-foraging experiment
     (#fig(<fig:general>, "g–i")), minus the same network before refining, on the held-out
     animals and held-out sessions of the first fold, over all three cameras. Points show the

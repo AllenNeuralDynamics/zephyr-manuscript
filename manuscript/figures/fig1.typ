@@ -22,7 +22,7 @@
     stroke: none,
     align: (left, left),
     table.hline(stroke: 0.5pt),
-    table.header([*Corpus*], []),
+    table.header([*Dataset*], []),
     table.hline(stroke: 0.3pt),
     [Animals], [#v("corpus.animals") head-fixed mice],
     [Sessions], [#v("corpus.sessions"), two 300-s clips each],

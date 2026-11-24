@@ -1329,6 +1329,7 @@ def table1(by_fold, cv_methods, fold_tables, methods, on_cpu, test_a, timing):
         "units_b": values.count(cv_counts_b["units"]),
         "animals_b": values.count(cv_counts_b["animals"]),
         "motion_r": values.num(_r.loc["Pixel (motion)", "mean"]),
+        "motion_f1": values.num(_f1.loc["Pixel (motion)", "mean"]),
         "pixel_r_max": values.num(_r.loc[["Pixel (SNR)"], "mean"].max()),
         "pixel_f1": values.span(
             _f1.loc[_pixels, "mean"].min(), _f1.loc[_pixels, "mean"].max()

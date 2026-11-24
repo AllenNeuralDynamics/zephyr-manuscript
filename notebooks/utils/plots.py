@@ -1979,8 +1979,6 @@ def before_after_panel(
                     "o",
                     ms=3.5,
                     color=style.color(when),
-                    mec=style.color(camera),
-                    mew=0.8,
                     zorder=3,
                 )
         a.axhline(0, color="0.6", lw=0.5, ls=":")
