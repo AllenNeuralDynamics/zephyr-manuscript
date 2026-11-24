@@ -1,4 +1,4 @@
-// Fig. 6: When to trust a prediction. Build: typst compile figures/fig6.typ (from manuscript/).
+// Fig. 6: Respiration measured from video alone. Build: typst compile figures/fig6.typ (from manuscript/).
 // Panels: layout.toml [fig6], drawn by notebooks/manuscript_figures.py.
 
 #import "lib.typ": assemble

@@ -8,97 +8,93 @@
 [fig1]
 width_mm = 183
 gap_mm = 4
-rows = [["a"], ["b", "c"], ["d"], ["e"]]
+# One point: the data set. The three views, one session's respiration in the task, and
+# the corpus.
+rows = [["a"], ["b"], ["c", "d"]]
 
 [fig1.panels.a]
-kind = "schematic"
+kind = "data"
 width_mm = 183
-height_mm = 80
-what = "Rig rendering: head-fixed mouse on the wheel, front, face and side cameras enlarged beside it, odor line (3d-vr-foraging FIG1_overview.svg)"
+height_mm = 46
+what = "One session from the face, side and front cameras, each frame with the network's crop box in the camera's colour"
 
 [fig1.panels.b]
 kind = "data"
-width_mm = 142
-height_mm = 52
+width_mm = 183
+height_mm = 56
 what = "Thirty seconds of one session: velocity, the thermistor and its respiration rate, licks, rewards, odor sites"
 
 [fig1.panels.c]
-kind = "data"
-width_mm = 37
-height_mm = 52
-what = "The same session: respiration rate against velocity"
+kind = "table"
+width_mm = 89
+height_mm = 40
+what = "The corpus: animals, sessions, rigs, hours, cameras and frame rates, and the split sizes"
 
 [fig1.panels.d]
+kind = "data"
+width_mm = 90
+height_mm = 40
+what = "Distribution of respiration rate over the corpus and per animal"
+
+[fig2]
+width_mm = 183
+gap_mm = 4
+# One point: the network and what its output looks like.
+rows = [["a"], ["b"]]
+
+[fig2.panels.a]
 kind = "data"
 width_mm = 183
 height_mm = 36
 what = "Network, read off the checkpoint: crops, frame encoder, resampling, TCN, heads"
 
-[fig1.panels.e]
+[fig2.panels.b]
 kind = "data"
 width_mm = 183
 height_mm = 40
-what = "Face frame with crop; predicted and measured sniffing on a test-A animal with its events, onset probability"
-
-[fig2]
-width_mm = 183
-gap_mm = 4
-# A list inside a row is a column of panels stacked top to bottom.
-rows = [["a", ["b", "c"]]]
-
-[fig2.panels.a]
-kind = "data"
-width_mm = 120
-height_mm = 92
-what = "Selection: every recorded session to the sets, each loss with its reason"
-
-[fig2.panels.b]
-kind = "data"
-width_mm = 59
-height_mm = 44
-what = "Distribution of breathing rate per set"
-
-[fig2.panels.c]
-kind = "data"
-width_mm = 59
-height_mm = 44
-what = "The split: animals by date, sessions coloured by set"
-
+what = "Face frame with crop; predicted and measured respiration on a held-out animal with its events, onset probability"
 
 [fig3]
 width_mm = 183
 gap_mm = 4
-rows = [["a", "b"], ["c", "d", "e"]]
+# Left block: a above b, c and d side by side; a slim right column: e above f.
+rows = [[["a", ["b", "c", "d"]], ["e", "f"]]]
 
 [fig3.panels.a]
 kind = "data"
-width_mm = 120
-height_mm = 50
+width_mm = 135
+height_mm = 46
 what = "One test-A clip: the thermistor and every method's trace, with its correlation"
 
 [fig3.panels.b]
 kind = "data"
-width_mm = 59
-height_mm = 50
-what = "Inhale F1 against inference time per method: animals, mean and 95% interval"
+width_mm = 43
+height_mm = 44
+what = "Inhale F1 against inference time per method: folds, mean and 95% interval"
 
 [fig3.panels.c]
 kind = "data"
-width_mm = 62
-height_mm = 46
+width_mm = 42
+height_mm = 44
 what = "Inhale F1 by breathing rate for every network, with the share of breaths per rate"
 
 [fig3.panels.d]
 kind = "data"
-width_mm = 62
-height_mm = 46
-what = "Zephyr's onset lag by breathing rate, test A"
+width_mm = 42
+height_mm = 44
+what = "Zephyr's inhalation precision and recall by breathing rate: mean over folds and 95% interval"
 
 [fig3.panels.e]
 kind = "data"
-width_mm = 51
-height_mm = 46
-what = "Bland-Altman of breathing rate in 10 s windows, Zephyr, test A"
+width_mm = 44
+height_mm = 45
+what = "Zephyr's onset lag by breathing rate: a violin per rate bin, mean over folds and 95% interval"
+
+[fig3.panels.f]
+kind = "data"
+width_mm = 44
+height_mm = 45
+what = "Error of the respiration rate in 10-s windows (Hz), its distribution in three rate ranges, Zephyr"
 
 [fig4]
 width_mm = 183
@@ -159,88 +155,76 @@ width_mm = 47
 height_mm = 40
 what = "Its held-out animal's correlation and inhale F1 before and after refining, per camera"
 
-[fig6]
+[fig5]
 width_mm = 183
 gap_mm = 4
 rows = [["a", "b", "c"], ["d"], ["e"]]
 
-[fig6.panels.a]
+[fig5.panels.a]
 kind = "data"
 width_mm = 44
 height_mm = 42
 what = "Inhale F1 and errors left as the onset tolerance is relaxed"
 
-[fig6.panels.b]
+[fig5.panels.b]
 kind = "data"
 width_mm = 50
 height_mm = 42
 what = "Near misses: a well-correlated clip with many predictions 25-100 ms off"
 
-[fig6.panels.c]
+[fig5.panels.c]
 kind = "data"
 width_mm = 81
 height_mm = 42
 what = "A dynamic-foraging clip before and after refining: thermistor, prediction and inhalations, with each prediction's quality-control scores"
 
-[fig6.panels.d]
+[fig5.panels.d]
 kind = "data"
 width_mm = 183
 height_mm = 34
 what = "One held-out clip with noise added to its frames (none, 16, 32, 64 gray levels): thermistor, prediction and inhalations, with each one's true F1 and r"
 
-[fig6.panels.e]
+[fig5.panels.e]
 kind = "data"
 width_mm = 183
 height_mm = 34
 what = "Quality-control scores over 30-s windows: validation, sets where the network works, and known failures (dynamic foraging unrefined, noisy frames), beside true F1"
 
-[fig7]
+[fig6]
 width_mm = 183
 gap_mm = 4
-# Two columns: a above b; c above d, e and f, g, two by two.
-rows = [[["a", "b"], ["c", ["d", "e"], ["f", "g"]]]]
+# Two columns: a above b; c above d and e, side by side.
+rows = [[["a", "b"], ["c", ["d", "e"]]]]
 
-[fig7.panels.a]
+[fig6.panels.a]
 kind = "data"
 width_mm = 89.5
 height_mm = 70
 what = "Face-camera quality-control scores over 30-s windows of every session without a thermistor, beside sets where the network works and known failures, with the lowest window on head vs trace F1 marked; the four measures two by two"
 
-[fig7.panels.b]
+[fig6.panels.b]
 kind = "data"
 width_mm = 89.5
 height_mm = 80
 what = "Ten seconds of the marked window around four frames of the face video with the crop box (a row above), the predicted trace (z-scored) with its inhalations and the onset probability, the frames' times marked"
 
-[fig7.panels.c]
+[fig6.panels.c]
 kind = "data"
 width_mm = 89.5
-height_mm = 56
+height_mm = 70
 what = "Fifteen seconds of the example session: Zephyr's trace with its inhalations, onset probability, respiration rate with velocity, licks, rewards, odor sites"
 
-[fig7.panels.d]
+[fig6.panels.d]
 kind = "data"
 width_mm = 42.75
-height_mm = 45
+height_mm = 80
 what = "The example session: respiration rate and velocity around odor onset per kind of site"
 
-[fig7.panels.e]
+[fig6.panels.e]
 kind = "data"
 width_mm = 42.75
-height_mm = 45
+height_mm = 80
 what = "Every session: respiration rate and velocity around odor onset per kind of site, mean over sessions"
-
-[fig7.panels.f]
-kind = "data"
-width_mm = 42.75
-height_mm = 45
-what = "The example session: respiration rate against running velocity"
-
-[fig7.panels.g]
-kind = "data"
-width_mm = 42.75
-height_mm = 45
-what = "Every session: respiration rate against running velocity, mean over sessions"
 
 # Supplementary figures.
 
@@ -396,3 +380,31 @@ kind = "data"
 width_mm = 183
 height_mm = 34
 what = "Every onset-head measure of quality control over the same windows, beside true inhale F1"
+
+[figs10]
+width_mm = 183
+gap_mm = 4
+rows = [["a", "b"]]
+
+[figs10.panels.a]
+kind = "data"
+width_mm = 120
+height_mm = 92
+what = "Selection: every recorded session to the sets, each loss with its reason"
+
+[figs10.panels.b]
+kind = "data"
+width_mm = 59
+height_mm = 60
+what = "The split: animals by date, sessions coloured by set"
+
+[figs11]
+width_mm = 183
+gap_mm = 4
+rows = [["a"]]
+
+[figs11.panels.a]
+kind = "schematic"
+width_mm = 183
+height_mm = 122
+what = "The behavioral rig (3d-vr-foraging, tools/frontleft.py): the three cameras, the hot mirror, the odor tube and the thermistor lead, with the light path of each camera"

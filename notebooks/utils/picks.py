@@ -37,6 +37,10 @@ SALIENCY_SESSION = "behavior_806527_2026-01-22_18-42-08"
 """Fig. S6a: the new animal of fold cv_0 whose maps are shown from each camera (its
 maps close to the average on every camera, with a clean side view)."""
 
+FIG1_VIEW_SESSION = "behavior_828418_2025-11-12_23-52-42"
+"""The session whose three camera views open Fig. 1a, picked by eye among
+:data:`VIEW_SESSIONS` for a clean frame from every camera."""
+
 VIEW_SESSIONS = (
     "behavior_810750_2025-11-05_20-47-56",
     "behavior_828418_2025-11-12_23-52-42",
