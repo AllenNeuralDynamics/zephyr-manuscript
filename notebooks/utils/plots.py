@@ -2066,7 +2066,7 @@ def quality_sets_panel(
     grid = [columns[i : i + per_row] for i in range(0, len(columns), per_row)]
     grid[-1] += ["."] * (per_row - len(grid[-1]))
     fig, ax = style.panel(width_mm, height_mm, grid, sharey=True)
-    names = [name for name, _ in rows]
+    names = [style.set_label(name) for name, _ in rows]
     jitter = np.random.default_rng(0)
     for column, label in measures.items():
         a = ax[column]

@@ -162,7 +162,7 @@
     performing an olfactory foraging task, in which behavioral videos are
     synchronized with a nasal epithelial temperature sensor that provided ground-truth measurement of respiration.
     Our method - Zephyr - accurately extracted the timing of inhalation events and recovered the respiration waveform with high fidelity in animals held out from
-    training. This performance was robust across different animals, recording conditions, and camera angles. We show that Zephyr can be refined #margin-note[is this fine-tuning or retraining with an expanded pool of mice?] with as few as 4 mice, making it feasible for adoption by standard behavioral and systems neuroscience experiments and labs.
+    training. This performance was robust across different animals, recording conditions, and camera angles. Trained on as few as 4 mice, Zephyr already generalized to new animals, and fine-tuning it on video of 2 mice adapted it to a new task and new camera views, making it feasible for adoption by standard behavioral and systems neuroscience experiments and labs.
     We propose that Zephyr, along with our curated dataset and quality-control tools, is a viable alternative to existing methods for measuring respiration.
   ],
 )
@@ -209,10 +209,10 @@ sensor (thermistor) recordings from #v("corpus.sessions") sessions in #v("corpus
 head-fixed mice on #v("corpus.rigs") behavioral rigs. We tested computer-vision and deep learning methods
 for recovering respiration from the video. Our network, which we call Zephyr, not only recovered the timing of each inhalation in
 held-out animals but was also able to faithfully reconstruct the thermistor waveform. Zephyr performed well when trained across several camera views,
-and, after retraining on a small amount of new data, generalized to new experimental conditions.
+and, after fine-tuning on a small amount of new data, generalized to new experimental conditions.
 Finally, we show that curated quality-control scores computed from Zephyr's
 output alone can be used to evaluate each prediction, generating confidence metrics of respiration signals extracted from videography in place of surgically implanted sensors. We release the dataset, the
-code, as well as trained models, for others to use and refine on their own data.
+code, as well as trained models, for others to use and fine-tune on their own data.
 
 = Results
 
@@ -400,13 +400,13 @@ remained an open question. We used an independent dataset @su2026, in which mice
 evaluate how well Zephyr pre-trained on our dataset performed on these sessions. On a held-out animal, it was not able to directly track respiration (inhalation
 F1 #v("refine.f1_before_side") from the side and #v("refine.f1_before_bottom") from below). Given our previous success on generalizing to new animals with little data, we next asked
 whether a small amount of additional training videos from this new setup could improve
-performance. We retrained the network on the dataset expanded with two animals recorded in the dynamic foraging task and predicted on the third held-out animal. Both
+performance. We fine-tuned the network: training continued from its weights on the original training set together with two animals recorded in the dynamic foraging task, and we predicted on the third, held-out animal (#link(<sec:methods>)[Methods]). Both
 measures improved markedly from both camera angles, to an inhalation F1 of
 #v("refine.f1_after_side") and #v("refine.f1_after_bottom") and a waveform correlation of
 #v("refine.r_after_side") and #v("refine.r_after_bottom") (#fig(<fig:general>, "h,i")), while
-the refined network did not lose performance on the initial dataset. This
+the fine-tuned network did not lose performance on the initial dataset (@fig:refine). This
 result supports the idea that while Zephyr may not generalize to unseen setups out of the box, it
-can be refined with little data to adapt to new experimental conditions.
+can be fine-tuned with little data to adapt to new experimental conditions.
 
 #figure(
   fit(fig4),
@@ -417,10 +417,10 @@ can be refined with little data to adapt to new experimental conditions.
     trained on the face, side or front camera (@fig:cameras). *e,* Inhalation F1 of each
     camera's network by respiration rate (colors as in *d*). *f,* One network trained on all three camera views. Inhalation F1 by respiration rate (top) and its
     difference from each single-camera network (bottom). *g–i,* The network of *f*
-    refined on a dynamic-foraging experiment. *g* F1 scores of a held-out animal (3 animals in total with "leave-one-out") on its
+    fine-tuned on a dynamic-foraging experiment. *g* F1 scores of a held-out animal (3 animals in total with "leave-one-out") on its
     side and bottom views with their crops. *h* 12 s of one clip with the ground-truth thermistor
-    (black), and the output of the refined network (colored as *g*). *i* correlation and
-    inhalation F1 before and after refining, per held-out animal.]
+    (black), and the output of the fine-tuned network (colored as *g*). *i* correlation and
+    inhalation F1 before and after fine-tuning, per held-out animal.]
 ) <fig:general>
 
 == Quality-control on predictions without ground-truth sensor data
@@ -450,7 +450,7 @@ label reliably. Relatedly, lowering the ground-truth detector's prominence thres
 inhalations at 2–3 Hz and #v("slow.added_mid")% at 6–8 Hz (@fig:slow). In other words, depending on the scientific question, temporal precision may be sacrificed for overall detection sensitivity, especially at lower breathing rates.
 
 Even if the sources of most errors are known, we still need ways to assess the quality of the predictions. 
-For instance, without having the thermistor raw data, one would like to be able to distinguish between the predictions provided by pre-trained and refined networks on the dynamic foraging experiments (add figure).
+For instance, without having the thermistor raw data, one would like to be able to distinguish between the predictions provided by pre-trained and fine-tuned networks on the dynamic foraging experiments (add figure).
 
 We calculated metrics (see methods) that we find reliably predict inference quality. Briefly, on each 30-s window of a prediction we computed four measures that need no ground truth: 1. how
 well the inhalation onset head's inhalations agree with the peaks of the network's own waveform (head vs
@@ -463,11 +463,11 @@ to their validation range. At 32 gray levels and beyond, F1 collapsed
 (#v("quality.noise32_truth_inhale_f1")), and every score moved away from that range: head vs
 waveform F1, for instance, fell from #v("quality.validation_head_trace_f1") to
 #v("quality.noise32_head_trace_f1") (#fig(<fig:trust>, "d,e")). The dynamic-foraging
-predictions behaved the same way. Before refining, the network found almost none of that
+predictions behaved the same way. Before fine-tuning, the network found almost none of that
 experiment's inhalations (true F1 #v("quality.df_unrefined_truth_inhale_f1")), its head vs
 waveform F1 fell to #v("quality.df_unrefined_head_trace_f1") and the inhalation onset probability between
 inhalations rose from #v("quality.validation_onset_background") to
-#v("quality.df_unrefined_onset_background"). After refining (i.e. retraining the network on the dataset plus two dynamic-foraging animals, as above), the same network scored as well on these
+#v("quality.df_unrefined_onset_background"). After fine-tuning (as above), the same network scored as well on these
 videos as it did on our dataset (#fig(<fig:trust>, "c,e")). The proposed metrics can thus separate
 predictions that work from known failures without implanting a thermistor.
 
@@ -478,7 +478,7 @@ predictions that work from known failures without implanting a thermistor.
     inhalations (FP) left (bottom). *b,* A clip with many near misses, predictions 25–100 ms from
     a thermistor inhalation, which count as both a miss and a false inhalation (r =
     #v("clips.near_r"), F1 #v("clips.near_f1")). *c,* Twelve seconds of
-    one dynamic-foraging clip predicted by the pooled network before and after refining,
+    one dynamic-foraging clip predicted by the pooled network before and after fine-tuning,
     over the thermistor (black). *d,* Twelve seconds of one clip of a held-out animal
     with progressively more Gaussian noise added (std = 16, 32 and 64). *e,* The quality-control scores and the true
     inhalation F1 over 30-s windows of the pooled network's validation animals. Faint points are single windows, black dots each session's median across its windows, black ticks the mean of those medians, and shaded bars its 95% bootstrap interval over sessions. Bands in *a* are
@@ -555,7 +555,7 @@ lower on some rigs and animals than on others (@fig:rigs). The quality-control m
 score each window of a recording without a sensor and, calibrated against scores of predictions
 known to work and known to fail, allow the user to set their own thresholds.
 
-Adopting Zephyr therefore requires little beyond the videography many head-fixed laboratories already collect. A laboratory first runs the pre-trained network on its own recordings and uses the quality-control measures to check whether the predictions are reliable for its setup. If they are not, the network can be refined with a small amount of ground-truth data from the laboratory's own rig: a few animals recorded with video and a nasal epithelial temperature sensor (2 to 4 animals sufficed in our experiments). Once refined, Zephyr runs efficiently on a consumer-grade GPU, and no sensor is needed in subsequent animals.
+Adopting Zephyr therefore requires little beyond the videography many head-fixed laboratories already collect. A laboratory first runs the pre-trained network on its own recordings and uses the quality-control measures to check whether the predictions are reliable for its setup. If they are not, the network can be fine-tuned with a small amount of ground-truth data from the laboratory's own rig: a few animals recorded with video and a nasal epithelial temperature sensor (2 to 4 animals sufficed in our experiments). Once fine-tuned, Zephyr runs efficiently on a consumer-grade GPU, and no sensor is needed in subsequent animals.
 
 The dataset also limits what we can claim. All mice were head-fixed, so the camera saw the
 face from a fixed distance and angle, and the animal could not turn away, rear or groom
@@ -899,18 +899,18 @@ each frame, in 1/60-s bins (@fig:saliency).
 
 == Generalization experiments
 
-_Training-set size experiments._ We retrained Zephyr on parts of the training set of fold
+_Training-set size experiments._ We trained Zephyr from scratch on parts of the training set of fold
 #v("size.fold") (#fig(<fig:general>, "c")): nested subsets of #v("size.animals") of its
 #v("size.all_animals") training animals with all their sessions (#v("size.sessions")
 sessions), and #v("size.partial_sessions") sessions drawn from all #v("size.all_animals")
 animals. Each experiment was trained 3 times on a different draw of subset of trials. For the 2 animals condition, 5 networks were trained instead to account for the larger variability.
 
-_Refining on a different task._ The pooled network of the first fold was refined on
+_Fine-tuning on a different task._ The pooled network of the first fold was fine-tuned on
 video of "dynamic-foraging" experiments. Training started from the pooled network's checkpoint, with half of each batch
 from the fold's training clips of all three cameras of the dataset, and half from the 8 sessions
 of 2 animals of that experiment, at a learning rate of 1.5 × 10#super[−4], with the other
 settings of @tab:train. Early stopping and the inhalation onset threshold used the fold's
-validation animals. Both the refined network and the untouched pooled network were
+validation animals. Both the fine-tuned network and the untouched pooled network were
 scored on the #v("refine.clips") clips (#v("refine.sessions") sessions) of a single third
 animal of that experiment.
 
@@ -1169,9 +1169,9 @@ batch, steps per epoch and learning rate are in @tab:nets #note[confirm how the 
 
 #figure(
   fit(figs7),
-  caption: [*Refining on a different task costs little on the original dataset.* The network of
-    #fig(<fig:general>, "f") after refining on the dynamic-foraging experiment
-    (#fig(<fig:general>, "g–i")), minus the same network before refining, on the held-out
+  caption: [*Fine-tuning on a different task costs little on the original dataset.* The network of
+    #fig(<fig:general>, "f") after fine-tuning on the dynamic-foraging experiment
+    (#fig(<fig:general>, "g–i")), minus the same network before fine-tuning, on the held-out
     animals and held-out sessions of the first fold, over all three cameras. Points show the
     mean over animal × rig units with its 95% paired bootstrap interval.],
 ) <fig:refine>

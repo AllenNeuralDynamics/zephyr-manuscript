@@ -1830,8 +1830,8 @@ def fig6efg():
         *size("fig5", "c"),
         _rows_e,
         labels={
-            "Zephyr, all cameras, on DF": "Before\nrefining",
-            "Zephyr, all cameras, refined on DF": "After\nrefining",
+            "Zephyr, all cameras, on DF": "Before\nfine-tuning",
+            "Zephyr, all cameras, refined on DF": "After\nfine-tuning",
         },
         notes=_notes,
     )

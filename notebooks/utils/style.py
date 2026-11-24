@@ -48,8 +48,10 @@ SET_LABELS: dict[str, str] = {
     "A: new animals": "Held-out animals",
     "B: new sessions": "Held-out sessions",
     "C: 359 Hz": "359-Hz sessions",
+    "Dynamic foraging, refined": "Dynamic foraging, fine-tuned",
+    "Dynamic foraging, unrefined": "Dynamic foraging, not fine-tuned",
 }
-"""How each test set (a key of :data:`SETS`) is named in a figure."""
+"""How each test or quality-control set is named in a figure."""
 
 
 def set_label(name: str, wrap: bool = False, short: bool = False) -> str:
