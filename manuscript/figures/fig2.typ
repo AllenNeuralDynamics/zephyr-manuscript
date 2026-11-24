@@ -1,10 +1,10 @@
-// Fig. 2: The corpus. Build: typst compile figures/fig2.typ (from manuscript/).
-// Panels: layout.toml [fig2], all drawn by notebooks/manuscript_figures.py.
+// Fig. 2: The network. Build: typst compile figures/fig2.typ (from manuscript/).
+// Panels: layout.toml [fig2]; all drawn by notebooks/manuscript_figures.py.
 
 #import "lib.typ": assemble
 
 // Panels that exist as fig2/<name>.svg; the rest are drawn as placeholders.
-#let files = ("a", "b", "c")
+#let files = ("a", "b")
 
 #let body = assemble("fig2", files: files)
 

@@ -158,15 +158,25 @@ def fig1b(lick_times, odor_sites, task_clips, task_truth):
 
 
 @app.cell
-def fig1c(task_aligned, task_session, task_thermistor_hz):
-    fig1c = plots.rate_speed_panel(*size("fig1", "c"), task_session, task_thermistor_hz)
-    plots.save_panel(fig1c, FIGURES / "fig1" / "c.svg")
+def fig1c(task_aligned):
     _counts = task_aligned.groupby(["site", "signal"])["n"].first()
     v_fig1 = {
         f"sites_{s.lower()}": values.count(_counts[(s, "rate")]) for s in style.SITES
     }
-    mo.vstack([fig1c, mo.ui.table(_counts.reset_index(), selection=None)])
+    mo.ui.table(_counts.reset_index(), selection=None)
     return (v_fig1,)
+
+
+@app.cell
+def fig1a():
+    # Fig. 1a: one session from the three cameras, each with the crop box its network
+    # reads (picks.FIG1_VIEW_SESSION, one of Supplementary Fig. 4's sessions).
+    fig1a = plots.views_panel(
+        *size("fig1", "a"), runs.camera_views(picks.FIG1_VIEW_SESSION)
+    )
+    plots.save_panel(fig1a, FIGURES / "fig1" / "a.svg")
+    fig1a
+    return
 
 
 @app.cell
@@ -188,10 +198,10 @@ def fig1d(stem):
     _svg = architecture.network_svg(
         _net,
         runs.inhale_frames(stem),
-        *size("fig1", "d"),
+        *size("fig2", "a"),
         runs.output_fs(stem),
     )
-    (FIGURES / "fig1" / "d.svg").write_text(_svg, encoding="utf8")
+    (FIGURES / "fig2" / "a.svg").write_text(_svg, encoding="utf8")
     mo.Html(_svg)
     return
 
@@ -213,7 +223,7 @@ def fig1e_md():
 def fig1e(excerpt, origin, stem, truth, zephyr):
     _t0, _window = excerpt
     fig1e = plots.prediction_panel(
-        *size("fig1", "e"),
+        *size("fig2", "b"),
         truth,
         zephyr,
         origin,
@@ -222,7 +232,7 @@ def fig1e(excerpt, origin, stem, truth, zephyr):
         runs.thumbnail(stem),
         runs.box(stem),
     )
-    plots.save_panel(fig1e, FIGURES / "fig1" / "e.svg")
+    plots.save_panel(fig1e, FIGURES / "fig2" / "b.svg")
     fig1e
     return
 
@@ -258,8 +268,8 @@ def fig2a(dataset, spec):
     # joining it there.
     _steps = corpus_flow.shorten(corpus_flow.flow(dataset, spec)[1:], sets=False)
     _steps[0]["name"] = "recorded"
-    fig2a = corpus_flow.flow_panel(*size("fig2", "a"), _steps)
-    plots.save_panel(fig2a, FIGURES / "fig2" / "a.svg")
+    fig2a = corpus_flow.flow_panel(*size("figs10", "a"), _steps)
+    plots.save_panel(fig2a, FIGURES / "figs10" / "a.svg")
     # recorded, passed the thermistor rules, passed the clip and camera rules, corpus
     v_selection = {
         k: values.count(s["sessions"])
@@ -299,8 +309,8 @@ def optional_cameras(dataset, folds, spec):
 def fig2b(folds):
     # Every thermistor breath's rate over the corpus, and per animal.
     _rates = runs.animal_breath_rates()
-    fig2b = plots.corpus_rate_panel(*size("fig2", "b"), _rates, step=0.5)
-    plots.save_panel(fig2b, FIGURES / "fig2" / "b.svg")
+    fig2b = plots.corpus_rate_panel(*size("fig1", "d"), _rates, step=0.5)
+    plots.save_panel(fig2b, FIGURES / "fig1" / "d.svg")
     _r = np.concatenate([np.asarray(r) for r in _rates.values()])
     _r = _r[(_r >= 2) & (_r <= 15)]
     v_rates = {
@@ -317,8 +327,8 @@ def fig2b(folds):
 @app.cell
 def fig2c(folds):
     _used = folds[folds["set"].notna()]
-    fig2c = plots.corpus_animals_panel(*size("fig2", "c"), _used)
-    plots.save_panel(fig2c, FIGURES / "fig2" / "c.svg")
+    fig2c = plots.corpus_animals_panel(*size("figs10", "b"), _used)
+    plots.save_panel(fig2c, FIGURES / "figs10" / "b.svg")
     _dates = pd.to_datetime(_used["date"])
     _per = (
         _used.assign(date=_dates)
@@ -439,12 +449,50 @@ def fig3a(cv_methods, methods):
 
 
 @app.cell
-def fig3b(by_fold, methods, test_a):
-    # Inference speed, frames per second (runs.wall_time): networks on this machine's GPU,
-    # the pixel methods and Facemap in numpy on its CPU. Inhale F1 on new animals per
-    # fold (dots) and its mean over folds with the 95% interval.
+def fig3b(by_fold, fold_tables, methods, test_a, with_unit):
+    # Inference speed, frames per second (runs.wall_time): networks on this machine's
+    # GPU, the pixel methods and Facemap in numpy on its CPU (Table 1).
     timing = runs.wall_time(methods).set_index("method")
     on_cpu = [m for m in methods if not timing.loc[m, "device"].startswith("NVIDIA")]
+    # b: inhale F1 on new animals per fold (dots) and its mean over folds with the 95%
+    # interval, against inference speed. c, d: inhalation precision and recall on new
+    # animals. Each method's matched,
+    # missed and false inhalations summed within each animal x rig unit, precision and
+    # recall per unit, averaged over a fold's units, then over folds (mean and 95%
+    # interval), as every other score.
+    _t = fold_tables(methods, ("breaths", "false_positives"))
+    _t = {k: v.query("set == @test_a") for k, v in _t.items()}
+
+    _folds = pd.read_parquet(runs.dataset_raw("folds.parquet"))
+    _subject = dict(zip(_folds["session_id"], _folds["subject_id"], strict=True))
+
+    def _units(table):
+        session = table["stem"].astype(str).str.rsplit("_span", n=1).str[0]
+        return with_unit(table.assign(session=session, subject=session.map(_subject)))
+
+    _keys = ["method", "fold", "unit"]
+    _b = _units(_t["breaths"])
+    _f = _units(_t["false_positives"])
+    _counts = pd.DataFrame(
+        {
+            "tp": _b[_b["detected"]].groupby(_keys).size(),
+            "fn": _b[~_b["detected"]].groupby(_keys).size(),
+            "fp": _f.groupby(_keys).size(),
+        }
+    ).fillna(0)
+    _counts["precision"] = _counts["tp"] / (_counts["tp"] + _counts["fp"])
+    _counts["recall"] = _counts["tp"] / (_counts["tp"] + _counts["fn"])
+    _per_fold = _counts.groupby(["method", "fold"])[["precision", "recall"]].mean()
+    precision_recall = pd.concat(
+        analysis.across_folds(
+            _per_fold.reset_index().rename(columns={m: "value"})[
+                ["method", "fold", "value"]
+            ],
+            "value",
+            by=["method"],
+        ).assign(measure=m)
+        for m in ("precision", "recall")
+    )
     _a = by_fold[by_fold["set"] == test_a]
     fig3b = plots.accuracy_time_panel(
         *size("fig3", "b"),
@@ -456,13 +504,28 @@ def fig3b(by_fold, methods, test_a):
         label_offsets={
             "Zephyr": (-4, 6),
             "TS-CAN": (3, -7),
-            "PhysNet": (4, 3),
+            "PhysNet": (-10, -9),
             "Pixel (SNR)": (-12, -7),
         },
     )
     plots.save_panel(fig3b, FIGURES / "fig3" / "b.svg")
-    fig3b
-    return on_cpu, timing
+    _pr = precision_recall.set_index(["measure", "method"])
+    v_precision = {
+        f"{m}_{k}": values.num(_pr.loc[(m, n), "mean"])
+        for m in ("precision", "recall")
+        for k, n in (
+            ("zephyr", "Zephyr"),
+            ("physnet", "PhysNet"),
+            ("facemap", "Facemap"),
+        )
+    }
+    mo.vstack(
+        [
+            fig3b,
+            mo.ui.table(precision_recall.round(3)),
+        ]
+    )
+    return on_cpu, timing, v_precision
 
 
 @app.cell
@@ -490,12 +553,23 @@ def fig3cde(fold_tables, rate_share, test_a):
         legend=False,  # colours as in b, where every method is named
     )
     plots.save_panel(fig3c, FIGURES / "fig3" / "c.svg")
+    # d: Zephyr's precision and recall by rate, each fold's counts per bin, then the
+    # mean over folds with its interval; on the F1 panel's y limits.
+    _z = _by_rate[_by_rate["method"] == "Zephyr"].copy()
+    _z["precision"] = _z["tp"] / (_z["tp"] + _z["fp"]).replace(0, np.nan)
+    _z["recall"] = _z["tp"] / (_z["tp"] + _z["fn"]).replace(0, np.nan)
+    _pr_rate = {
+        _m: analysis.across_folds(_z, _m, by=["method", "bin"])
+        for _m in ("precision", "recall")
+    }
+    _fig3pr = plots.precision_recall_rate_panel(*size("fig3", "d"), _pr_rate)
+    plots.save_panel(_fig3pr, FIGURES / "fig3" / "d.svg")
     _cv = whole
     _zephyr = _cv["lags"][_cv["lags"]["method"] == "Zephyr"]
-    fig3d = plots.lag_rate_panel(*size("fig3", "d"), _zephyr)
-    plots.save_panel(fig3d, FIGURES / "fig3" / "d.svg")
-    fig3e = plots.bland_altman_panel(*size("fig3", "e"), _cv["windows"], "Zephyr")
-    plots.save_panel(fig3e, FIGURES / "fig3" / "e.svg")
+    fig3d = plots.lag_violin_panel(*size("fig3", "e"), _zephyr)
+    plots.save_panel(fig3d, FIGURES / "fig3" / "e.svg")
+    fig3e = plots.rate_error_panel(*size("fig3", "f"), _cv["windows"], "Zephyr")
+    plots.save_panel(fig3e, FIGURES / "fig3" / "f.svg")
 
     _f1 = _rate.set_index(["method", "bin"])["mean"]
     _breaths = _cv["breaths"][_cv["breaths"]["method"] == "Zephyr"]
@@ -522,6 +596,11 @@ def fig3cde(fold_tables, rate_share, test_a):
         "f1_slow": values.num(_f1.loc[("Zephyr", "2-3")]),
         "f1_middle": values.span(_middle.min(), _middle.max()),
         "f1_fast": values.num(_f1.loc[("Zephyr", "12-15")]),
+        **{
+            f"{_m}_{_name}": values.num(_pr_rate[_m].set_index("bin").loc[_bin, "mean"])
+            for _m in ("precision", "recall")
+            for _name, _bin in (("slow", "2-3"), ("fast", "12-15"))
+        },
         "physnet_f1_slow": values.num(_f1.loc[("PhysNet", "2-3")]),
         "physnet_f1_fast": values.num(_f1.loc[("PhysNet", "12-15")]),
         "physformer_f1_slow": values.num(_f1.loc[("PhysFormer", "2-3")]),
@@ -534,6 +613,8 @@ def fig3cde(fold_tables, rate_share, test_a):
         "windows": values.count(len(_w)),
         "mae": values.num(_d.abs().mean(), 1),
         "bias": values.signed(_d.mean()),
+        "mae_hz": values.num(_d.abs().mean() / 60, 2),
+        "bias_hz": values.signed(_d.mean() / 60, 3),
         "limits_low": values.signed(_d.mean() - 1.96 * _d.std()),
         "limits_high": values.signed(_d.mean() + 1.96 * _d.std()),
         # the error relative to the thermistor's rate, and the windows within 10% of it
@@ -958,9 +1039,9 @@ def fig7(qc_windows):
         ("Noise 32", "null"),
     ]
     fig_5a = plots.quality_sets_panel(
-        *size("fig7", "a"), _windows, _rows, truth=None, marks=_marked, per_row=2
+        *size("fig6", "a"), _windows, _rows, truth=None, marks=_marked, per_row=2
     )
-    plots.save_panel(fig_5a, FIGURES / "fig7" / "a.svg")
+    plots.save_panel(fig_5a, FIGURES / "fig6" / "a.svg")
     # Frames of the window, s from its start (frame i at i / the clip's frame rate, as
     # the prediction), chosen by eye (picks.APPLICATION_SHOTS_S; the application
     # analysis extracted them).
@@ -994,9 +1075,9 @@ def fig7(qc_windows):
         }
     ]
     fig_5b = plots.window_examples_panel(
-        *size("fig7", "b"), _examples, _threshold, style.color("Zephyr")
+        *size("fig6", "b"), _examples, _threshold, style.color("Zephyr")
     )
-    plots.save_panel(fig_5b, FIGURES / "fig7" / "b.svg")
+    plots.save_panel(fig_5b, FIGURES / "fig6" / "b.svg")
 
     # c: a stretch of the example session
     _window = 15.0
@@ -1005,7 +1086,7 @@ def fig7(qc_windows):
     _signal = _s["signal"][_keep]
     _shown = _onsets[(_onsets["leave"] > _start) & (_onsets["odor"] < _start + _window)]
     fig_5c = plots.task_stretch_panel(
-        *size("fig7", "c"),
+        *size("fig6", "c"),
         pd.DataFrame(
             {
                 "time": _grid[_keep] - _start,
@@ -1028,7 +1109,7 @@ def fig7(qc_windows):
         speed_on_rate=True,
         onset=pd.DataFrame({"time": _grid[_keep] - _start, "p": _s["onset"][_keep]}),
     )
-    plots.save_panel(fig_5c, FIGURES / "fig7" / "c.svg")
+    plots.save_panel(fig_5c, FIGURES / "fig6" / "c.svg")
 
     # d-g: the task, in the example session and over every session
     _lags = np.arange(-2.0, 5.0 + 1e-9, 1 / 60)
@@ -1046,27 +1127,13 @@ def fig7(qc_windows):
     _one = f"Mouse {_s['subject']}"
     _every = f"{len({t['subject'] for t in _tasks.values()})} animals"
     fig_5d = plots.aligned_panel(
-        *size("fig7", "d"), _aligned, title=_one, legend_columns=2
+        *size("fig6", "d"), _aligned, title=_one, legend_columns=2
     )
-    plots.save_panel(fig_5d, FIGURES / "fig7" / "d.svg")
+    plots.save_panel(fig_5d, FIGURES / "fig6" / "d.svg")
     fig_5e = plots.aligned_panel(
-        *size("fig7", "e"), _across, legend=False, title=_every
+        *size("fig6", "e"), _across, legend=False, title=_every
     )
-    plots.save_panel(fig_5e, FIGURES / "fig7" / "e.svg")
-    fig_5f = plots.share_heat_panel(
-        *size("fig7", "f"),
-        analysis.rate_given_speed(_counts_all[_entry.session]),
-        *_bins,
-        title=_one,
-    )
-    plots.save_panel(fig_5f, FIGURES / "fig7" / "f.svg")
-    fig_5g = plots.share_heat_panel(
-        *size("fig7", "g"),
-        analysis.rate_given_speed_across(list(_counts_all.values())),
-        *_bins,
-        title=_every,
-    )
-    plots.save_panel(fig_5g, FIGURES / "fig7" / "g.svg")
+    plots.save_panel(fig_5e, FIGURES / "fig6" / "e.svg")
 
     _n = _aligned[(_aligned["signal"] == "rate") & (_aligned["lag"] == _lags[0])]
     _n_all = _across[(_across["signal"] == "rate") & (_across["lag"] == _lags[0])]
@@ -1091,7 +1158,7 @@ def fig7(qc_windows):
             fig_5a,
             fig_5b,
             fig_5c,
-            mo.hstack([fig_5d, fig_5e, fig_5f, fig_5g]),
+            mo.hstack([fig_5d, fig_5e]),
             mo.ui.table(_marked[["mark", "stem", "start", *style.QC_MEASURES]]),
             mo.md(f"{v_application}"),
         ]
@@ -1221,7 +1288,9 @@ def table1(by_fold, cv_methods, fold_tables, methods, on_cpu, test_a, timing):
     benchmark_b, _summary_b, _b = _benchmark(runs.SETS["test_b"])
     (FIGURES.parent / "tables").mkdir(exist_ok=True)
     benchmark.to_csv(FIGURES.parent / "tables" / "benchmark.csv", index=False)
-    benchmark_b.to_csv(FIGURES.parent / "tables" / "benchmark_b.csv", index=False)
+    benchmark_b.to_csv(
+        FIGURES.parent / "tables" / "benchmark_held_out_sessions.csv", index=False
+    )
     benchmark_diff = {
         c: _summary[c][["mean", "low", "high", "minus ref", "diff low", "diff high"]]
         for c in ("inhale", "correlation")
@@ -1411,8 +1480,8 @@ def fig4e(whole):
             columns={"mean": _k, "low": f"{_k} low", "high": f"{_k} high"}
         )
         tolerance = tolerance.merge(_apart.drop(columns="folds"), on=_by)
-    fig4c = plots.tolerance_panel(*size("fig6", "a"), tolerance, _nets)
-    plots.save_panel(fig4c, FIGURES / "fig6" / "a.svg")
+    fig4c = plots.tolerance_panel(*size("fig5", "a"), tolerance, _nets)
+    plots.save_panel(fig4c, FIGURES / "fig5" / "a.svg")
     _at = tolerance.set_index("tolerance_ms")
     v_tolerance = {
         "f1_12": values.num(_at.loc[12.5, "mean"]),
@@ -1610,6 +1679,7 @@ def fig4df(test_a):
         _near, errors="ignore"
     )
 
+    # Fig. 5b: the near-miss clip, its errors marked (FN, FP, near misses).
     _cases = {"b": _clips.loc[_near]}
     low_r = {
         "clips": len(_low),
@@ -1632,7 +1702,7 @@ def fig4df(test_a):
         _t = _errors.loc[_errors["near_miss"], "time"].to_numpy()
         _at = float(_t[np.argmax([np.sum(np.abs(_t - x) < 1.5) for x in _t])])
         _fig = plots.failure_panel(
-            *size("fig6", _panel),
+            *size("fig5", _panel),
             _truth,
             _p,
             _errors,
@@ -1640,9 +1710,9 @@ def fig4df(test_a):
             _at - _origin,
             [],
             half=1.0,
-            legend=_panel == "b",
+            legend=True,
         )
-        plots.save_panel(_fig, FIGURES / "fig6" / f"{_panel}.svg")
+        plots.save_panel(_fig, FIGURES / "fig5" / f"{_panel}.svg")
         _shown += [
             mo.md(
                 f"**{_panel}**: {_stem}, inhale F1 {_row['inhale']:.3f}, "
@@ -1661,12 +1731,7 @@ def fig4df(test_a):
         "near_f1": values.num(_cases["b"]["inhale"]),
         "threshold": values.num(runs.head_threshold(_one)),
     }
-    mo.vstack(
-        [
-            mo.md(f"Lowest tenth by correlation: {low_r}"),
-            *_shown,
-        ]
-    )
+    mo.vstack([mo.md(f"Lowest tenth by correlation: {low_r}"), *_shown])
     return (v_clips,)
 
 
@@ -1697,8 +1762,8 @@ def fig6efg():
         s for s in runs.RESULTS.quality.set if s.role not in ("application", "camera")
     ]
     _rows = [("Validation", "validation"), *[(s.label, s.role) for s in _sets]]
-    fig6g = plots.quality_sets_panel(*size("fig6", "e"), qc_windows, _rows)
-    plots.save_panel(fig6g, FIGURES / "fig6" / "e.svg")
+    fig6g = plots.quality_sets_panel(*size("fig5", "e"), qc_windows, _rows)
+    plots.save_panel(fig6g, FIGURES / "fig5" / "e.svg")
 
     _noise, _ = runs.quality_noise()
     _own = _noise[_noise["sigma"] == 0].set_index("stem")["truth_inhale_f1"]
@@ -1727,9 +1792,9 @@ def fig6efg():
             _scored.loc[_sigma, "truth_correlation"],
         )
     fig6f = plots.refined_traces_panel(
-        *size("fig6", "d"), _rows_f, colours=_colours, corner=_corner, ncols=2
+        *size("fig5", "d"), _rows_f, colours=_colours, corner=_corner, ncols=2
     )
-    plots.save_panel(fig6f, FIGURES / "fig6" / "d.svg")
+    plots.save_panel(fig6f, FIGURES / "fig5" / "d.svg")
 
     _before, _after = "Dynamic foraging, unrefined", "Dynamic foraging, refined"
     _f1 = qc_windows[qc_windows["set"] == _after].groupby("stem")["truth_inhale_f1"]
@@ -1761,7 +1826,7 @@ def fig6efg():
             "true F1 {:.2f}"
         ).format(*_clip[[*style.QC_MEASURES, "truth_inhale_f1"]].median())
     fig6e = plots.refined_traces_panel(
-        *size("fig6", "c"),
+        *size("fig5", "c"),
         _rows_e,
         labels={
             "Zephyr, all cameras, on DF": "Before\nrefining",
@@ -1769,7 +1834,7 @@ def fig6efg():
         },
         notes=_notes,
     )
-    plots.save_panel(fig6e, FIGURES / "fig6" / "c.svg")
+    plots.save_panel(fig6e, FIGURES / "fig5" / "c.svg")
 
     _median = qc_windows.groupby("set")[
         [*style.QC_MEASURES, "truth_inhale_f1"]
@@ -2350,6 +2415,7 @@ def manuscript_values(
     v_errors,
     v_fig1,
     v_fig3,
+    v_precision,
     v_rate,
     v_rates,
     v_cameras_missing,
@@ -2378,6 +2444,7 @@ def manuscript_values(
         "clips": v_clips,
         "corpus": v_corpus,
         "errors": v_errors,
+        "precision": v_precision,
         "rate": v_rate,
         "rates": v_rates,
         "selection": v_selection,

@@ -547,7 +547,7 @@ def rate_distribution_panel(
     bins = np.unique(1.0 / ((samples + 0.5) * sample))
     for name, values in rates.items():
         counts, _ = np.histogram(values, bins)
-        density = 100 * counts / len(values) / np.diff(bins)
+        density = counts / len(values) / np.diff(bins)
         a.stairs(
             density,
             bins,
@@ -558,7 +558,7 @@ def rate_distribution_panel(
     a.set_xlim(low, high)
     a.set_ylim(bottom=0)
     a.set_xlabel("Respiration rate (Hz)")
-    a.set_ylabel("Cycles (% per Hz)")
+    a.set_ylabel("Density of cycles (per Hz)")
     a.legend(loc="upper right", fontsize=6, handlelength=1)
     return fig
 
@@ -583,7 +583,7 @@ def corpus_rate_panel(
 
     def density(values: NDArray) -> NDArray:
         counts, _ = np.histogram(values, bins)
-        return 100 * counts / len(values) / np.diff(bins)
+        return counts / len(values) / np.diff(bins)
 
     for values in rates.values():
         a.stairs(density(values), bins, color="0.8", linewidth=0.4)
@@ -593,7 +593,7 @@ def corpus_rate_panel(
     a.set_xlim(low, high)
     a.set_ylim(bottom=0)
     a.set_xlabel("Respiration rate (Hz)")
-    a.set_ylabel("Cycles (% per Hz)")
+    a.set_ylabel("Density of cycles (per Hz)")
     a.legend(loc="upper right", fontsize=6, handlelength=1)
     return fig
 
@@ -889,6 +889,131 @@ def bland_altman_panel(
     return fig
 
 
+def lag_violin_panel(
+    width_mm: float,
+    height_mm: float,
+    lags: pd.DataFrame,
+    low: float = 2.0,
+    high: float = 12.0,
+    step_hz: float = 1.0,
+    widest_ms: float = 50.0,
+) -> Figure:
+    """Onset lag (predicted minus true inhale) per rate bin (*lags*: ``lag_s``,
+    ``rate_hz``, ``fold``): a violin of each bin's lags within *widest_ms* (pooled over
+    folds), each bin's mean lag over folds with its 95% bootstrap interval (dots) and,
+    dotted, the scorer's tolerance."""
+    fig, ax = style.panel(width_mm, height_mm, [["v"]])
+    a = ax["v"]
+    lag = lags["lag_s"].to_numpy() * 1000
+    rate = lags["rate_hz"].to_numpy()
+    keep = (
+        np.isfinite(rate) & (rate >= low) & (rate < high) & (np.abs(lag) <= widest_ms)
+    )
+    lag, rate, fold = lag[keep], rate[keep], lags["fold"].to_numpy()[keep]
+    edges = np.arange(low, high + step_hz / 2, step_hz)
+    which = np.digitize(rate, edges) - 1
+    centres = (edges[:-1] + edges[1:]) / 2
+    data = [lag[which == k] for k in range(len(centres))]
+    shown = [k for k, d in enumerate(data) if len(d) > 10]
+    parts = a.violinplot(
+        [data[k] for k in shown],
+        positions=centres[shown],
+        widths=0.8 * step_hz,
+        showextrema=False,
+        bw_method=0.3,
+    )
+    for body in parts["bodies"]:
+        body.set_facecolor(style.color("Zephyr"))
+        body.set_edgecolor("none")
+        body.set_alpha(0.35)
+    for k in shown:
+        here = pd.DataFrame({"fold": fold[which == k], "lag": data[k]})
+        per_fold = here.groupby("fold")["lag"].mean().to_numpy()
+        mean = per_fold.mean()
+        lo, hi = analysis.bootstrap_mean(per_fold)
+        a.errorbar(
+            centres[k],
+            mean,
+            yerr=[[mean - lo], [hi - mean]],
+            fmt="o",
+            ms=2.0,
+            color=style.TRUTH,
+            elinewidth=0.7,
+            capsize=0,
+            zorder=4,
+        )
+    for y in (-TOLERANCE_MS, TOLERANCE_MS):
+        a.axhline(y, color="0.4", linewidth=0.6, linestyle=":")
+    a.axhline(0, color="0.75", linewidth=0.4)
+    a.set_xticks(edges[::2])
+    a.set_ylim(-widest_ms, widest_ms)
+    a.set_xlabel("Respiration rate (Hz)")
+    a.set_ylabel("Inhalation onset lag (ms)")
+    a.grid(False)
+    return fig
+
+
+def rate_error_panel(
+    width_mm: float,
+    height_mm: float,
+    windows: pd.DataFrame,
+    name: str,
+    ranges: Sequence[tuple[float, float]] = ((2.0, 4.0), (4.0, 8.0), (8.0, 15.0)),
+    lim_hz: float = 0.5,
+) -> Figure:
+    """The error of the respiration rate counted in each window (video minus
+    thermistor, Hz) of method *name*: its distribution for each range of the
+    thermistor's rate (*ranges*, Hz), one row each, slowest on top, as the fraction of
+    that range's windows. Counted rates come in steps of one breath per window, one
+    bin to a step. The axes are shared, y ticked at 0 and the largest fraction. Dotted
+    lines mark the range's 95% limits of agreement and the solid line its bias."""
+    rows = [[f"r{i}"] for i in range(len(ranges))]
+    fig, ax = style.panel(width_mm, height_mm, rows, sharex=True)
+    w = windows[(windows["method"] == name) & (windows["true_hz"] >= ranges[0][0])]
+    diff = w["pred_hz"] - w["true_hz"]
+    step = (
+        float(np.min(np.diff(np.unique(np.round(diff, 6))))) if len(diff) > 1 else 0.1
+    )
+    edges = np.arange(-lim_hz - step / 2, lim_hz + step, step)
+    colour = style.color(name)
+    rows_shown = {}
+    for i, (lo, hi) in enumerate(ranges):
+        here = diff[(w["true_hz"] >= lo) & (w["true_hz"] < hi)]
+        if len(here):
+            counts, _ = np.histogram(here.clip(-lim_hz, lim_hz), edges)
+            rows_shown[i] = (here, counts / len(here))
+    top = max(float(s.max()) for _, s in rows_shown.values())
+    for i, (lo, hi) in enumerate(ranges):
+        a = ax[f"r{i}"]
+        if i not in rows_shown:
+            continue
+        here, share = rows_shown[i]
+        a.stairs(share, edges, fill=True, color=colour, alpha=0.35, lw=0)
+        a.stairs(share, edges, color=colour, lw=0.7)
+        bias, limit = float(here.mean()), 1.96 * float(here.std())
+        for x, ls in ((bias, "-"), (bias - limit, ":"), (bias + limit, ":")):
+            a.axvline(x, color="0.3", linewidth=0.6, linestyle=ls)
+        a.set_ylim(0, top * 1.05)
+        a.set_yticks([0, top], ["0", f"{top:.2f}"])
+        a.text(
+            0.02,
+            0.92,
+            f"{lo:g}–{hi:g} Hz",
+            transform=a.transAxes,
+            ha="left",
+            va="top",
+            fontsize=5.5,
+        )
+        a.grid(False)
+        if i < len(ranges) - 1:
+            a.tick_params(labelbottom=False)
+    last = ax[f"r{len(ranges) - 1}"]
+    last.set_xlim(-lim_hz, lim_hz)
+    last.set_xlabel("Rate error (Hz)")
+    ax[f"r{len(ranges) // 2}"].set_ylabel("Fraction of windows")
+    return fig
+
+
 def sets_panel(
     width_mm: float,
     height_mm: float,
@@ -1180,6 +1305,44 @@ def rig_animal_panel(
     return fig
 
 
+def precision_recall_rate_panel(
+    width_mm: float,
+    height_mm: float,
+    summary: dict[str, pd.DataFrame],
+    name: str = "Zephyr",
+    ylim: tuple[float, float] = (0.4, 1.02),
+) -> Figure:
+    """Inhalation precision and recall of *name* per breathing-rate bin, one line each
+    (mean over folds, band its 95% interval; *summary*: ``"precision"`` and
+    ``"recall"``, each with ``bin``, ``mean``, ``low``, ``high``); *ylim* as the F1
+    panel's."""
+    fig, ax = style.panel(width_mm, height_mm, [["pr"]])
+    a = ax["pr"]
+    colour = style.color(name)
+    bins = list(dict.fromkeys(summary["precision"]["bin"].astype(str)))
+    x = np.arange(len(bins))
+    for measure, line, marker in (("precision", "-", "o"), ("recall", "--", "s")):
+        s = summary[measure]
+        s = s.set_index(s["bin"].astype(str)).reindex(bins)
+        a.plot(
+            x,
+            s["mean"],
+            linestyle=line,
+            marker=marker,
+            ms=2,
+            lw=0.8,
+            color=colour,
+            label=measure.capitalize(),
+        )
+        a.fill_between(x, s["low"], s["high"], color=colour, alpha=0.15, lw=0)
+    a.set_xticks(x, [b.split("-")[0] for b in bins])
+    a.set_xlabel("Respiration rate (Hz)")
+    a.set_ylabel("Precision, recall\n(held-out animals)")
+    a.set_ylim(*ylim)
+    a.legend(loc="lower right", fontsize=6, handlelength=2)
+    return fig
+
+
 def rate_band_panel(
     width_mm: float,
     height_mm: float,
@@ -1214,12 +1377,10 @@ def rate_band_panel(
     if share is not None:
         s = share.set_index(share["bin"].astype(str)).reindex(bins)
         bottom = ax["share"]
-        bottom.plot(x, 100 * s["mean"], "-o", ms=1.6, lw=0.8, color=style.TRUTH)
-        bottom.fill_between(
-            x, 100 * s["low"], 100 * s["high"], color=style.TRUTH, alpha=0.15, lw=0
-        )
+        bottom.plot(x, s["mean"], "-o", ms=1.6, lw=0.8, color=style.TRUTH)
+        bottom.fill_between(x, s["low"], s["high"], color=style.TRUTH, alpha=0.15, lw=0)
         bottom.set_ylim(bottom=0)
-        bottom.set_ylabel("Cycles (%)")
+        bottom.set_ylabel("Fraction\nof cycles")
         fig.align_ylabels([ax["f1"], bottom])
     bottom.set_xticks(x, [b.split("-")[0] for b in bins])
     bottom.set_xlabel("Respiration rate (Hz)")
@@ -1499,16 +1660,17 @@ def failure_panel(
         tr.plot([], [], color=style.ERRORS[kind], lw=0.8, label=kind.split()[-1][1:-1])
     tr.set_xlim(t0, t1)
     tr.set_ylim(-5.2, 3.9)
-    tr.set_ylabel("Respiration (z)")
+    tr.set_ylabel("Respiration\n(z)")
     tr.set_xticklabels([])
     if legend:
         tr.legend(
-            loc="lower left",
+            loc="lower right",
             ncol=4,
             fontsize=5,
             handlelength=0.8,
             columnspacing=0.8,
-            bbox_to_anchor=(0, -0.08),
+            bbox_to_anchor=(1, 1.0),
+            borderaxespad=0.2,
             frameon=False,
         )
     o = ax["onset"]
@@ -1518,7 +1680,7 @@ def failure_panel(
     )
     o.set_ylim(0, 1.05)
     o.set_yticks([0, 1])
-    o.set_ylabel("Inhalation onset (p)")
+    o.set_ylabel("Inhalation\nonset (p)")
     o.set_xlim(t0, t1)
     o.set_xlabel("Time (s)")
     o.xaxis.set_major_locator(ticker.MultipleLocator(0.5))
@@ -1527,6 +1689,7 @@ def failure_panel(
         f.imshow(image, cmap="gray", vmin=0, vmax=255)
         f.set_title(f"{ft - at:+.2f} s", fontsize=6, weight="normal", pad=1.5)
         f.set_axis_off()
+    fig.align_ylabels([tr, o])
     return fig
 
 
